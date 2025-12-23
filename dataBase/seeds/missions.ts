@@ -7,7 +7,7 @@ import { Mission } from "../../types";
 
   visualEffect: {
     text: "화면에 띄울 텍스트",
-    type: "flood" | "error" | "system_crash",
+    type: "flood" | "error" | "system_crash" | "emoji_swarm",
     duration: 3000,        // 지속 시간 (ms)
     intensity: 8,          // 강도 (1~10, 높을수록 빠르거나 강함)
     color: "text-red-600", // 텍스트 색상 (Tailwind class)
@@ -15,9 +15,10 @@ import { Mission } from "../../types";
     speed: 100             // 텍스트 출력 간격 ms (선택 사항, 낮을수록 빠름)
   }
 
-  - type 'flood': 텍스트가 화면을 가득 채우며 증식합니다. (공포/광기 연출)
+  - type 'flood': 텍스트가 화면을 뒤덮으며 증식하는 공포 효과 (예: "내 얼굴 내 얼굴...")
   - type 'error': 텍스트가 깜빡이며 경고창처럼 뜹니다. (시스템 오류 연출)
   - type 'system_crash': 블루스크린/치명적 오류 화면을 띄웁니다.
+  - type 'emoji_swarm': 기괴한 이모지들이 화면 전체를 뒤덮으며 증식하는 환각 효과
 */
 
 export const INITIAL_MISSIONS: Mission[] = [
@@ -47,15 +48,14 @@ export const INITIAL_MISSIONS: Mission[] = [
         id: "stage_room_404",
         description: "방 안에는 얼굴이 없는 여자가 거울을 보고 있습니다. 거울 속의 얼굴은 당신을 보고 웃고 있습니다. 그녀가 묻습니다.",
         
-        // [시각 효과 적용 예시: 텍스트 도배]
+        // [시각 효과 적용 예시: 이모지 스웜]
         visualEffect: {
-          text: "내 얼굴 내 얼굴 내 얼굴",
-          type: "flood",        // 증식형 글리치
-          duration: 2500,       // 2.5초간 지속
-          intensity: 3,         // 강도 조절 (가독성 향상)
+          text: "나를 봐 나를 봐 나를 봐",
+          type: "emoji_swarm",  // 기괴한 이모지 효과 적용
+          duration: 3000,       // 3초간 지속
+          intensity: 8,         // 강도 높음 (이모지 많이 생성)
           color: "text-red-600",
-          fontSize: "text-xl",   // 글자 크기 조절
-          speed: 50            // 텍스트 반복 속도 (0.05초마다 추가)
+          fontSize: "text-3xl"
         },
 
         choices: [

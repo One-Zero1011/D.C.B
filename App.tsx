@@ -15,6 +15,7 @@ import ContentWarningModal from './components/ContentWarningModal';
 import { processTurn } from './services/simulationEngine';
 import { getVirtualDate, formatVirtualDate } from './dataBase/dateUtils';
 import { db } from './dataBase/manager';
+import { createVisualEffectLog, VisualEffectOptions } from './dataBase/visualEffectService';
 import { 
   Play, Pause, Plus, FastForward, Monitor, Coffee, 
   ShoppingCart, Calendar as CalendarIcon, HeartHandshake, 
@@ -272,6 +273,11 @@ const App: React.FC = () => {
 
     setView('mission');
     setShowSettings(false);
+  };
+
+  const handleTriggerVisualEffect = (options: VisualEffectOptions) => {
+    const log = createVisualEffectLog(options);
+    setLogs(prev => [...prev, log]);
   };
 
   // --- File I/O Functions ---
@@ -589,6 +595,7 @@ const App: React.FC = () => {
             isDevMode={isDevMode}
             onToggleDevMode={() => setIsDevMode(!isDevMode)}
             onForceMission={handleForceStartMission}
+            onTriggerEffect={handleTriggerVisualEffect}
           />
         )}
 

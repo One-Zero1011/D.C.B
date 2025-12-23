@@ -56,8 +56,10 @@ export interface MissionChoice {
  * - `flood`: 텍스트가 화면을 뒤덮으며 증식하는 공포 효과 (예: "내 얼굴 내 얼굴...")
  * - `error`: 텍스트가 붉은색으로 점멸하며 경고음 같은 시각적 노이즈 발생
  * - `system_crash`: 치명적인 시스템 오류를 알리는 정적인 오버레이 (블루스크린 스타일)
+ * - `emoji_swarm`: 기괴한 이모지들이 화면 전체를 뒤덮으며 증식하는 환각 효과
+ * - `emojiPopUp`: 지정된 이모지들이 화면 곳곳에서 눈을 뜨듯이 튀어나오는 효과
  */
-export type VisualEffectType = 'flood' | 'error' | 'system_crash';
+export type VisualEffectType = 'flood' | 'error' | 'system_crash' | 'emoji_swarm' | 'emojiPopUp';
 
 /**
  * 글리치 효과의 세부 설정
@@ -69,6 +71,7 @@ export interface VisualEffectConfig {
   color?: string;          // 텍스트 색상 (Tailwind class, e.g., 'text-red-500')
   fontSize?: string;       // 텍스트 크기 (Tailwind class, e.g., 'text-xl', 'text-6xl')
   speed?: number;          // 텍스트 출력 간격 (ms). 낮을수록 빠름.
+  customEmojis?: string[]; // emojiPopUp 등에서 사용할 커스텀 이모지 리스트
 }
 
 export interface MissionStage {
@@ -83,6 +86,7 @@ export interface MissionStage {
     color?: string;         // 색상 (Tailwind class, 기본 text-red-600)
     fontSize?: string;      // 텍스트 크기 (선택 사항)
     speed?: number;         // 텍스트 출력 간격 (ms, 선택 사항)
+    customEmojis?: string[]; // 이모지 팝업용 리스트
   };
   choices: MissionChoice[];
 }
