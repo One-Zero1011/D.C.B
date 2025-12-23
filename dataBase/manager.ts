@@ -1,11 +1,13 @@
-
-import { MBTI, Species, Character, Body, BodyPart, StoreItem, CalendarEvent } from "../types";
+import { MBTI, Species, Character, Body, BodyPart, StoreItem, CalendarEvent, Mission } from "../types";
 import { INITIAL_SPECIES_LIST, INITIAL_MBTI_LIST, INITIAL_RELATIONSHIP_TYPES } from "./seeds/classifications";
 import { INITIAL_MBTI_TRAITS, INITIAL_MENTAL_STATES } from "./seeds/traits";
 import { INITIAL_ANOMALIES } from "./seeds/world";
 import { INITIAL_NPCS, NPC_DIALOGUES, NPC, DialogueNode } from "./seeds/npcs";
 import { STORE_ITEMS, STORE_OWNER } from "./seeds/store";
 import { INITIAL_CALENDAR_EVENTS } from "./seeds/calendarEvents";
+import { INITIAL_MISSIONS } from "./seeds/missions";
+import { GROWTH_LOGS, ANOMALY_LOGS, IDLE_LOGS } from "./seeds/actionLogs";
+import { MBTI_LOGS } from "./seeds/mbtiLogs";
 
 class DatabaseManager {
   private anomalies: string[];
@@ -17,6 +19,7 @@ class DatabaseManager {
   private npcs: NPC[];
   private storeItems: StoreItem[];
   private calendarEvents: CalendarEvent[];
+  private missions: Mission[];
 
   constructor() {
     this.anomalies = [...INITIAL_ANOMALIES];
@@ -28,6 +31,7 @@ class DatabaseManager {
     this.npcs = [...INITIAL_NPCS];
     this.storeItems = [...STORE_ITEMS];
     this.calendarEvents = [...INITIAL_CALENDAR_EVENTS];
+    this.missions = [...INITIAL_MISSIONS];
   }
 
   // --- Core Character Actions ---
@@ -40,7 +44,7 @@ class DatabaseManager {
     mbti: MBTI;
     baseHp: number;
     strength: number;
-    sanity: number;
+    sanity: number; // This is treated as the initial MAX sanity
   }): Character {
     const createPart = (name: string, hpRatio: number, isVital = false): BodyPart => ({
       name,
@@ -76,9 +80,11 @@ class DatabaseManager {
       maxHp: data.baseHp,
       strength: data.strength,
       sanity: data.sanity,
+      maxSanity: data.sanity, // Initialize Max Sanity
       body,
       status: '생존',
       mentalState: '안정',
+      activeMission: null, // 초기에는 임무 없음
       relationships: {},
       affinities: {},
       npcAffinities: initialNpcAffinities,
@@ -101,24 +107,35 @@ class DatabaseManager {
 
   // --- Store & Items Actions ---
 
-  applyStoreItem(char: Character, item: StoreItem): Character {
-    const updated = { ...char };
-    updated.anomaliesFixed = Math.max(0, updated.anomaliesFixed - item.price);
-
+  applyStoreItem(char: Character, item: StoreItem, targetPartKey?: keyof Body): Character {
+    const updated = { ...char, body: { ...char.body } };
+    
     switch (item.effect) {
       case 'hp':
-        updated.maxHp = Math.min(updated.maxHp + 50, 300);
         this.repairAllBodyParts(updated);
         break;
       case 'sanity':
-        updated.sanity = Math.min(100, updated.sanity + 40);
+        const recoveryAmount = Math.floor(updated.maxSanity * 0.3); // 30% 회복
+        updated.sanity = Math.min(updated.maxSanity, updated.sanity + recoveryAmount);
+        updated.mentalState = '안정'; 
         break;
       case 'body':
-        this.repairAllBodyParts(updated);
+        if (targetPartKey && updated.body[targetPartKey]) {
+            const originalPart = updated.body[targetPartKey];
+            updated.body[targetPartKey] = {
+                ...originalPart,
+                current: originalPart.max
+            };
+        } else {
+             this.repairSingleCriticalPart(updated);
+        }
+
         if (updated.status === '사망') {
-          updated.status = '생존';
-          updated.mentalState = '안정';
-          updated.sanity = 10;
+          if (updated.body.head.current > 0 && updated.body.neck.current > 0 && updated.body.torso.current > 0) {
+              updated.status = '생존';
+              updated.mentalState = '혼란';
+              updated.sanity = Math.max(10, Math.floor(updated.maxSanity * 0.1));
+          }
         }
         break;
     }
@@ -127,9 +144,45 @@ class DatabaseManager {
 
   private repairAllBodyParts(char: Character) {
     Object.keys(char.body).forEach((key) => {
-      const part = char.body[key as keyof Body];
-      part.current = part.max;
+      const partKey = key as keyof Body;
+      char.body[partKey] = { 
+          ...char.body[partKey], 
+          current: char.body[partKey].max 
+      };
     });
+  }
+
+  private repairSingleCriticalPart(char: Character) {
+    const parts = Object.values(char.body);
+    const destroyedParts = parts.filter(p => p.current <= 0);
+    let targetPartKey: keyof Body | null = null;
+
+    const findKeyByPart = (part: BodyPart): keyof Body | null => {
+         const entry = Object.entries(char.body).find(([_, p]) => p === part);
+         return entry ? entry[0] as keyof Body : null;
+    };
+
+    if (destroyedParts.length > 0) {
+      const destroyedVital = destroyedParts.filter(p => p.isVital);
+      if (destroyedVital.length > 0) {
+        targetPartKey = findKeyByPart(destroyedVital[0]);
+      } else {
+        targetPartKey = findKeyByPart(destroyedParts[0]);
+      }
+    } else {
+      const damagedParts = parts.filter(p => p.current < p.max);
+      if (damagedParts.length > 0) {
+        damagedParts.sort((a, b) => (a.current / a.max) - (b.current / b.max));
+        targetPartKey = findKeyByPart(damagedParts[0]);
+      }
+    }
+
+    if (targetPartKey) {
+      char.body[targetPartKey] = { 
+          ...char.body[targetPartKey], 
+          current: char.body[targetPartKey].max 
+      };
+    }
   }
 
   // --- Calendar Actions ---
@@ -141,6 +194,47 @@ class DatabaseManager {
     const newEvent = { ...event, id: crypto.randomUUID() };
     this.calendarEvents.push(newEvent);
     return newEvent;
+  }
+
+  // --- Missions ---
+  getMissions() { return this.missions; }
+  getMissionById(id: string) { return this.missions.find(m => m.id === id); }
+
+  // --- Log Generators (New) ---
+  
+  getGrowthLog(type: 'hp' | 'sanity', name: string, amount: number): string {
+    const templates = GROWTH_LOGS[type];
+    const template = templates[Math.floor(Math.random() * templates.length)];
+    return template.split('{name}').join(name).split('{amount}').join(amount.toString());
+  }
+
+  getAnomalySuccessLog(name: string, anomaly: string, traitStyle: string, traitVerb: string, npcName: string): string {
+    const templates = ANOMALY_LOGS.success;
+    const template = templates[Math.floor(Math.random() * templates.length)];
+    return template
+      .split('{name}').join(name)
+      .split('{anomaly}').join(anomaly)
+      .split('{trait_style}').join(traitStyle)
+      .split('{trait_verb}').join(traitVerb)
+      .split('{npc_name}').join(npcName);
+  }
+
+  getAnomalyFailureLog(name: string, anomaly: string): string {
+    const templates = ANOMALY_LOGS.failure;
+    const template = templates[Math.floor(Math.random() * templates.length)];
+    return template.split('{name}').join(name).split('{anomaly}').join(anomaly);
+  }
+
+  getIdleLog(name: string, traitStyle: string): string {
+    const templates = IDLE_LOGS;
+    const template = templates[Math.floor(Math.random() * templates.length)];
+    return template.split('{name}').join(name).split('{trait_style}').join(traitStyle);
+  }
+
+  getMbtiActionLog(name: string, mbti: MBTI): string {
+    const templates = MBTI_LOGS[mbti] || IDLE_LOGS; // Fallback to IDLE if MBTI not found (should not happen)
+    const template = templates[Math.floor(Math.random() * templates.length)];
+    return template.split('{name}').join(name);
   }
 
   // --- Metadata Getters ---

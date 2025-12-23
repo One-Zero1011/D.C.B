@@ -21,7 +21,7 @@ export const STORE_ITEMS: StoreItem[] = [
   {
     id: 'bio_tissue',
     name: '바이오-티슈 이식건',
-    description: '파괴된 신체 부위를 생체 점토로 재구성하여 수선합니다.',
+    description: '손상되거나 파괴된 신체 부위 중 선택한 곳을 완벽히 재구성합니다.',
     price: 10,
     effect: 'body',
     icon: '🔫'

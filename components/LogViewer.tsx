@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef } from 'react';
 import { LogEntry } from '../types';
 
@@ -19,6 +20,7 @@ const LogViewer: React.FC<Props> = ({ logs }) => {
       case 'death': return 'text-red-600 font-bold bg-red-950/20 p-1 border border-red-900';
       case 'system': return 'text-amber-300 italic';
       case 'dialogue': return 'text-cyan-300';
+      case 'growth': return 'text-green-400 font-bold border-l-2 border-green-500 pl-2 bg-green-950/10'; // New Growth Style
       default: return 'text-neutral-300';
     }
   };

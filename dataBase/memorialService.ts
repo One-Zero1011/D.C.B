@@ -23,8 +23,11 @@ export function generateMemorialScript(deceased: Character, allCharacters: Chara
   });
 
   const affinityVal = bestConnector ? (bestConnector.affinities[deceased.id] || 0) : 0;
-  const isPositive = affinityVal > 30;
-  const isNegative = affinityVal < -30;
+  
+  // 호감도 임계값 완화: 기존 30 -> 5
+  // 약간의 교류만 있어도 시스템 메시지가 아닌 동료의 대사가 출력되도록 함
+  const isPositive = affinityVal >= 5;
+  const isNegative = affinityVal <= -5;
 
   let condition: 'positive' | 'negative' | 'neutral' = 'neutral';
   if (isPositive) condition = 'positive';

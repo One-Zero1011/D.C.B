@@ -1,10 +1,12 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Character, LogEntry } from './types';
 import CharacterCard from './components/CharacterCard';
 import LogViewer from './components/LogViewer';
 import CharacterForm, { RelationshipDraft } from './components/CharacterForm';
 import CalendarModal from './components/CalendarModal';
+import SettingsModal from './components/SettingsModal';
+import SystemResetModal from './components/SystemResetModal';
 import NPCInteraction from './components/NPCInteraction';
 import Store from './components/Store';
 import MemorialSpace from './components/MemorialSpace';
@@ -13,29 +15,101 @@ import ContentWarningModal from './components/ContentWarningModal';
 import { processTurn } from './services/simulationEngine';
 import { getVirtualDate, formatVirtualDate } from './dataBase/dateUtils';
 import { 
-  Play, Pause, Plus, FastForward, RotateCcw, Monitor, Coffee, 
+  Play, Pause, Plus, FastForward, Monitor, Coffee, 
   ShoppingCart, Calendar as CalendarIcon, HeartHandshake, 
-  ChevronRight, Database, Save, FolderOpen, Menu
+  ChevronRight, Database, CloudLightning, Settings
 } from 'lucide-react';
 
-const SAVE_KEY = 'dimension_corp_save_v1';
+const SAVE_KEY = 'dimension_corp_auto_save_v1';
 
 const App: React.FC = () => {
   const [view, setView] = useState<'mission' | 'office' | 'store' | 'memorial' | 'archive'>('mission');
   const [characters, setCharacters] = useState<Character[]>([]);
+  const [credits, setCredits] = useState<number>(0);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isSimulating, setIsSimulating] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false); 
   const [showWarning, setShowWarning] = useState(true);
   const [speed, setSpeed] = useState(1000);
   const [currentDate, setCurrentDate] = useState(new Date());
+  
+  // 파일 입력을 위한 Refs
+  const simFileInputRef = useRef<HTMLInputElement>(null);
+  const agentFileInputRef = useRef<HTMLInputElement>(null);
+
+  // --- Auto Save & Load Logic ---
+  
+  // 초기 로드: 자동 저장된 데이터가 있으면 불러옴
+  useEffect(() => {
+    const rawData = localStorage.getItem(SAVE_KEY);
+    if (rawData) {
+      try {
+        const parsed = JSON.parse(rawData);
+        if (parsed.characters && Array.isArray(parsed.characters)) {
+          setCharacters(parsed.characters);
+          setCredits(parsed.credits || 0);
+          setLogs(parsed.logs || []);
+          if (parsed.currentDate) {
+            setCurrentDate(new Date(parsed.currentDate));
+          }
+          setLogs(prev => [...prev, {
+            id: 'auto-load',
+            timestamp: Date.now(),
+            type: 'system',
+            message: '시스템 복구: 자동 저장된 세션을 로드했습니다.'
+          }]);
+        }
+      } catch (e) {
+        console.error("Auto load failed", e);
+      }
+    } else {
+      setLogs([{
+        id: 'init',
+        timestamp: Date.now(),
+        type: 'system',
+        message: '본사 통합 관리 시스템 v4.0.3 로드 완료. 대기 중...'
+      }]);
+    }
+  }, []);
+
+  // 상태 변경 시 자동 저장
+  useEffect(() => {
+    const saveData = {
+      characters,
+      credits,
+      logs,
+      currentDate: currentDate.getTime(),
+      timestamp: Date.now()
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+  }, [characters, credits, logs, currentDate]);
+
+  // --- Simulation Engine ---
 
   const executeTurn = useCallback(() => {
+    if (characters.length === 0) return;
+
+    setCurrentDate(prev => {
+      const next = new Date(prev);
+      next.setDate(next.getDate() + 1);
+      return next;
+    });
+
     setCharacters(prevChars => {
       if (prevChars.length === 0) return prevChars;
       
       const { updatedCharacters, newLogs } = processTurn(prevChars);
+
+      const prevTotalFixed = prevChars.reduce((sum, c) => sum + c.anomaliesFixed, 0);
+      const newTotalFixed = updatedCharacters.reduce((sum, c) => sum + c.anomaliesFixed, 0);
+      const earnedCredits = newTotalFixed - prevTotalFixed;
+
+      if (earnedCredits > 0) {
+        setCredits(prev => prev + earnedCredits);
+      }
       
       if (newLogs.length > 0) {
         setLogs(prevLogs => {
@@ -57,22 +131,7 @@ const App: React.FC = () => {
       
       return updatedCharacters;
     });
-  }, []);
-
-  useEffect(() => {
-    setLogs([{
-      id: 'init',
-      timestamp: Date.now(),
-      type: 'system',
-      message: '본사 통합 관리 시스템 v4.0.2 로드 완료. 대기 중...'
-    }]);
-
-    const timer = setInterval(() => {
-      setCurrentDate(new Date());
-    }, 1000 * 60); 
-
-    return () => clearInterval(timer);
-  }, []);
+  }, [characters]);
 
   useEffect(() => {
     let interval: number | undefined;
@@ -82,8 +141,42 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [isSimulating, characters, speed, executeTurn]);
 
+  // --- Handlers ---
+
   const handleAddCharacter = (newChar: Character, relationships: RelationshipDraft[]) => {
-    setCharacters(prev => [...prev, newChar]);
+    setCharacters(prev => {
+      let updatedList = [...prev, newChar];
+
+      // 상호 관계(Mutual) 처리: 새로운 캐릭터가 상호 관계로 설정한 대상들의 상태도 업데이트
+      if (relationships && relationships.length > 0) {
+        updatedList = updatedList.map(existingChar => {
+          // 해당 기존 캐릭터가 새로운 캐릭터와의 관계 대상인지 확인
+          const draft = relationships.find(r => r.targetId === existingChar.id);
+          
+          if (draft && draft.isMutual) {
+             // 상호 관계이므로 기존 캐릭터에게도 관계 및 호감도 추가
+             const isNegative = ["라이벌", "앙숙", "적", "혐오", "경계", "불신", "무시"].includes(draft.label);
+             const baseAffinity = isNegative ? -30 : 20;
+
+             return {
+               ...existingChar,
+               relationships: {
+                 ...existingChar.relationships,
+                 [newChar.id]: draft.label // 동일한 라벨 사용 (상호 친구 등)
+               },
+               affinities: {
+                 ...existingChar.affinities,
+                 [newChar.id]: baseAffinity
+               }
+             };
+          }
+          return existingChar;
+        });
+      }
+
+      return updatedList;
+    });
+
     setLogs(prev => [...prev, {
       id: Math.random().toString(),
       timestamp: Date.now(),
@@ -97,59 +190,177 @@ const App: React.FC = () => {
     setCharacters(prev => prev.map(c => c.id === updated.id ? updated : c));
   };
 
-  const handleReset = () => {
-    if (!confirm('정말로 모든 시뮬레이션 데이터를 초기화하시겠습니까?')) return;
+  const handleDeleteCharacter = (id: string) => {
+    if (!confirm("정말로 이 요원을 영구 삭제하시겠습니까? 데이터는 복구할 수 없습니다.")) return;
+    
+    const target = characters.find(c => c.id === id);
+    setCharacters(prev => prev.filter(c => c.id !== id));
+    
+    if (target) {
+       setLogs(prev => [...prev, {
+          id: crypto.randomUUID(),
+          timestamp: Date.now(),
+          type: 'system',
+          message: `시스템 경고: 요원 ${target.name}의 데이터가 영구 말소되었습니다.`
+       }]);
+    }
+  };
+
+  const handleResetRequest = () => {
+    setShowResetConfirm(true);
+  };
+
+  const executeSystemReset = () => {
     setIsSimulating(false);
+    setShowSettings(false); 
+    setShowResetConfirm(false);
+    
+    localStorage.removeItem(SAVE_KEY);
+
     setCharacters([]);
+    setCredits(0);
+    setCurrentDate(new Date());
+    setView('mission');
+    setSpeed(1000);
+    
+    let logId = 'reset-init';
+    try { logId = crypto.randomUUID(); } catch(e) {}
+
     setLogs([{
-      id: Math.random().toString(),
+      id: logId,
       timestamp: Date.now(),
       type: 'system',
-      message: '시스템 강제 콜드 리셋. 모든 현장 기록 초기화.'
+      message: '시스템 리부트 완료. 데이터베이스가 초기화되었습니다. 요원을 호출하여 시뮬레이션을 시작하십시오.'
     }]);
   };
 
-  const handleSave = () => {
-    const saveData = {
-      characters,
-      logs,
-      timestamp: Date.now()
-    };
-    try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
-      setLogs(prev => [...prev, {
-        id: Math.random().toString(),
-        timestamp: Date.now(),
-        type: 'system',
-        message: '시스템 데이터 백업 성공: 로컬 노드에 현재 상태를 보존했습니다.'
-      }]);
-    } catch (e) {
-      alert('저장 실패: 브라우저 저장 용량이 부족할 수 있습니다.');
-    }
+  // --- File I/O Functions ---
+
+  const downloadFile = (data: any, filename: string) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
-  const handleLoad = () => {
-    const rawData = localStorage.getItem(SAVE_KEY);
-    if (!rawData) {
-      alert("불러올 백업 데이터가 존재하지 않습니다.");
+  const handleSaveSimulationFile = () => {
+    const saveData = {
+      version: '4.0.3',
+      type: 'FULL_SIMULATION',
+      characters,
+      credits,
+      logs,
+      currentDate: currentDate.getTime(),
+      timestamp: Date.now()
+    };
+    downloadFile(saveData, `DimensionCorp_Save_${new Date().toISOString().slice(0,10)}.json`);
+    setLogs(prev => [...prev, {
+      id: Math.random().toString(),
+      timestamp: Date.now(),
+      type: 'system',
+      message: '시스템 백업: 로컬 파일로 데이터 추출 완료.'
+    }]);
+  };
+
+  const handleLoadSimulationFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        if (parsed.type === 'FULL_SIMULATION' || (parsed.characters && parsed.logs)) {
+          if (!confirm('현재 시뮬레이션을 덮어쓰고 불러오시겠습니까?')) return;
+          
+          setIsSimulating(false);
+          setCharacters(parsed.characters || []);
+          setCredits(parsed.credits || 0);
+          setLogs(parsed.logs || []);
+          if (parsed.currentDate) setCurrentDate(new Date(parsed.currentDate));
+          setShowSettings(false); 
+          
+          setLogs(prev => [...prev, {
+            id: Math.random().toString(),
+            timestamp: Date.now(),
+            type: 'system',
+            message: '시스템 복원: 외부 파일에서 시뮬레이션 상태를 로드했습니다.'
+          }]);
+        } else {
+          alert('올바르지 않은 시뮬레이션 저장 파일입니다.');
+        }
+      } catch (err) {
+        alert('파일을 읽는 중 오류가 발생했습니다.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // Reset input
+  };
+
+  const handleExportAgents = () => {
+    if (characters.length === 0) {
+      alert("내보낼 요원이 없습니다.");
       return;
     }
-    try {
-      const parsed = JSON.parse(rawData);
-      if (parsed.characters && Array.isArray(parsed.characters)) {
-        setIsSimulating(false);
-        setCharacters(parsed.characters);
-        setLogs(parsed.logs || []);
+    const exportData = {
+      version: '4.0.3',
+      type: 'AGENT_ROSTER',
+      agents: characters
+    };
+    downloadFile(exportData, `DimensionCorp_Agents_${new Date().toISOString().slice(0,10)}.json`);
+    setLogs(prev => [...prev, {
+      id: Math.random().toString(),
+      timestamp: Date.now(),
+      type: 'system',
+      message: `인력 송출: ${characters.length}명의 요원 데이터 암호화 및 추출 완료.`
+    }]);
+  };
+
+  const handleImportAgents = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        let newAgents: Character[] = [];
+
+        if (parsed.type === 'AGENT_ROSTER' && Array.isArray(parsed.agents)) {
+          newAgents = parsed.agents;
+        } else if (Array.isArray(parsed)) {
+          newAgents = parsed; 
+        } else {
+          alert('올바르지 않은 요원 명단 파일입니다.');
+          return;
+        }
+
+        const imported = newAgents.map(agent => ({
+          ...agent,
+          id: crypto.randomUUID(),
+          name: `${agent.name} (전이됨)` 
+        }));
+
+        setCharacters(prev => [...prev, ...imported]);
+        setShowSettings(false); 
         setLogs(prev => [...prev, {
           id: Math.random().toString(),
           timestamp: Date.now(),
           type: 'system',
-          message: '시스템 복원 성공: 보존된 이전 세션을 성공적으로 로드했습니다.'
+          message: `인력 충원: 외부 차원에서 ${imported.length}명의 요원이 합류했습니다.`
         }]);
+
+      } catch (err) {
+        alert('파일을 읽는 중 오류가 발생했습니다.');
       }
-    } catch (e) {
-      alert("데이터 손상: 백업 파일을 읽는 도중 오류가 발생했습니다.");
-    }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // Reset input
   };
 
   const MobileNavItem = ({ targetView, icon: Icon, label }: { targetView: typeof view, icon: any, label: string }) => (
@@ -164,16 +375,27 @@ const App: React.FC = () => {
 
   return (
     <div className="h-[100dvh] bg-neutral-950 text-amber-100 font-sans selection:bg-amber-500/30 flex flex-col overflow-hidden relative">
-      
-      {/* Content Warning Modal */}
+      <input 
+        type="file" 
+        ref={simFileInputRef} 
+        onChange={handleLoadSimulationFile} 
+        accept=".json" 
+        className="hidden" 
+      />
+      <input 
+        type="file" 
+        ref={agentFileInputRef} 
+        onChange={handleImportAgents} 
+        accept=".json" 
+        className="hidden" 
+      />
+
       {showWarning && (
         <ContentWarningModal onConfirm={() => setShowWarning(false)} />
       )}
 
-      {/* Main App Content */}
       <div className={`flex flex-col h-full w-full transition-all duration-700 ${showWarning ? 'blur-md scale-[1.02] opacity-50 pointer-events-none' : 'blur-0 scale-100 opacity-100'}`}>
         
-        {/* Header */}
         <header className="border-b border-amber-900/30 bg-black/50 backdrop-blur-md p-3 md:p-4 shrink-0 z-40">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3 md:gap-0">
             <div className="w-full md:w-auto flex justify-between items-center">
@@ -185,7 +407,6 @@ const App: React.FC = () => {
                 </div>
               </div>
               
-              {/* Mobile Calendar Toggle */}
               <button 
                 onClick={() => setShowCalendar(true)}
                 className="md:hidden p-2 text-amber-500/70 hover:text-amber-400"
@@ -194,7 +415,6 @@ const App: React.FC = () => {
               </button>
             </div>
 
-            {/* Desktop Navigation */}
             <nav className="hidden md:flex bg-neutral-900 p-1 rounded-md border border-neutral-800">
               <button onClick={() => setView('mission')} className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold transition-all uppercase tracking-wider rounded ${view === 'mission' ? 'bg-amber-600 text-black shadow-lg' : 'text-neutral-500 hover:text-amber-200'}`}><Monitor size={14} /> 작전 제어실</button>
               <button onClick={() => setView('office')} className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold transition-all uppercase tracking-wider rounded ${view === 'office' ? 'bg-amber-600 text-black shadow-lg' : 'text-neutral-500 hover:text-amber-200'}`}><Coffee size={14} /> 사무실</button>
@@ -203,16 +423,19 @@ const App: React.FC = () => {
               <button onClick={() => setView('archive')} className={`flex items-center gap-2 px-4 py-1.5 text-xs font-bold transition-all uppercase tracking-wider rounded ${view === 'archive' ? 'bg-amber-900/40 border border-amber-500/50 text-amber-500 shadow-lg' : 'text-neutral-500 hover:text-amber-200'}`}><Database size={14} /> 기밀 보관소</button>
             </nav>
 
-            {/* Controls Toolbar - Horizontal Scroll on Mobile */}
             <div className="w-full md:w-auto overflow-x-auto pb-1 md:pb-0 no-scrollbar">
               <div className="flex gap-2 md:gap-4 items-center min-w-max px-1">
                 {view === 'mission' && (
                   <>
                     <div className="flex items-center gap-2 bg-neutral-900 p-1 border border-neutral-800 rounded-lg">
-                      <div className="flex border-r border-neutral-800 pr-1 mr-1">
-                        <button onClick={handleSave} className="p-2 rounded hover:bg-neutral-800 text-amber-500/50 hover:text-amber-400"><Save size={18} /></button>
-                        <button onClick={handleLoad} className="p-2 rounded hover:bg-neutral-800 text-amber-500/50 hover:text-amber-400"><FolderOpen size={18} /></button>
-                      </div>
+                      <button 
+                        onClick={() => setShowSettings(true)} 
+                        title="시스템 설정" 
+                        className="p-2 border-r border-neutral-800 text-amber-500/70 hover:text-amber-400 hover:bg-neutral-800"
+                      >
+                        <Settings size={18} />
+                      </button>
+
                       <button onClick={() => setIsSimulating(!isSimulating)} disabled={characters.length === 0} className={`p-2 rounded hover:bg-neutral-800 ${isSimulating ? 'text-amber-400' : 'text-neutral-400'}`}>
                         {isSimulating ? <Pause size={18} /> : <Play size={18} />}
                       </button>
@@ -221,9 +444,6 @@ const App: React.FC = () => {
                       </button>
                       <button onClick={() => setSpeed(speed === 1000 ? 200 : 1000)} className={`p-2 rounded hover:bg-neutral-800 ${speed < 500 ? 'text-amber-400' : 'text-neutral-400'}`}>
                         <FastForward size={18} />
-                      </button>
-                      <button onClick={handleReset} className="p-2 rounded hover:bg-neutral-800 text-red-900/70 hover:text-red-500">
-                        <RotateCcw size={18} />
                       </button>
                     </div>
                     <button onClick={() => setShowForm(true)} className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-black px-4 py-2 font-bold uppercase tracking-wider text-sm shadow-md whitespace-nowrap"><Plus size={16} /> 요원 호출</button>
@@ -234,7 +454,6 @@ const App: React.FC = () => {
           </div>
         </header>
 
-        {/* Main Content Area */}
         <main className="flex-1 max-w-7xl mx-auto w-full p-2 md:p-6 overflow-hidden mb-[60px] md:mb-0">
           {view === 'mission' ? (
             <div className="h-full flex flex-col lg:grid lg:grid-cols-12 gap-4 md:gap-6 overflow-hidden">
@@ -247,7 +466,15 @@ const App: React.FC = () => {
                       <button onClick={() => setShowForm(true)} className="text-amber-600 border border-amber-900/50 px-6 py-2 hover:bg-amber-900/20 transition-all uppercase text-xs tracking-widest">첫 번째 요원 호출</button>
                     </div>
                   ) : (
-                    characters.map(char => <CharacterCard key={char.id} character={char} allCharacters={characters} onUpdate={handleUpdateCharacter} />)
+                    characters.map(char => (
+                      <CharacterCard 
+                        key={char.id} 
+                        character={char} 
+                        allCharacters={characters} 
+                        onUpdate={handleUpdateCharacter}
+                        onDelete={handleDeleteCharacter} 
+                      />
+                    ))
                   )}
                 </div>
               </div>
@@ -258,7 +485,7 @@ const App: React.FC = () => {
               <NPCInteraction characters={characters} onUpdateCharacter={handleUpdateCharacter} />
             </div>
           ) : view === 'store' ? (
-            <div className="h-full animate-in fade-in slide-in-from-bottom-4 duration-500"><Store characters={characters} setCharacters={setCharacters} /></div>
+            <div className="h-full animate-in fade-in slide-in-from-bottom-4 duration-500"><Store characters={characters} setCharacters={setCharacters} credits={credits} setCredits={setCredits} /></div>
           ) : view === 'memorial' ? (
             <div className="h-full animate-in fade-in slide-in-from-top-4 duration-500">
               <MemorialSpace characters={characters} />
@@ -270,12 +497,15 @@ const App: React.FC = () => {
           )}
         </main>
 
-        {/* Desktop Footer (Hidden on Mobile) */}
         <footer className="hidden md:flex border-t border-amber-900/30 bg-black/80 backdrop-blur-md px-6 py-3 shrink-0 z-40 justify-between items-center text-xs font-mono">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
               <span className="text-neutral-500 uppercase tracking-widest">System Status: Connected</span>
+            </div>
+            <div className="flex items-center gap-2 text-neutral-500">
+               <CloudLightning size={12} className="text-amber-500" />
+               <span className="text-[10px] uppercase">Auto-Save Active</span>
             </div>
             <div className="text-amber-500/80 tracking-widest font-bold">
               {formatVirtualDate(getVirtualDate(currentDate))}
@@ -285,11 +515,10 @@ const App: React.FC = () => {
             <button onClick={() => setShowCalendar(true)} className="flex items-center gap-2 px-3 py-1.5 border border-amber-900/50 bg-neutral-900 text-amber-500/70 hover:text-amber-400 hover:border-amber-500/50 transition-all rounded-sm uppercase tracking-wider">
               <CalendarIcon size={14} /> 캘린더
             </button>
-            <span className="text-neutral-600">DIMENSION-CORP-V4.0.2</span>
+            <span className="text-neutral-600">DIMENSION-CORP-V4.0.3</span>
           </div>
         </footer>
 
-        {/* Mobile Bottom Navigation */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-neutral-950/95 backdrop-blur-lg border-t border-amber-900/30 z-50 flex justify-around pb-safe">
           <MobileNavItem targetView="mission" icon={Monitor} label="제어실" />
           <MobileNavItem targetView="office" icon={Coffee} label="사무실" />
@@ -304,6 +533,24 @@ const App: React.FC = () => {
 
         {showCalendar && (
           <CalendarModal onClose={() => setShowCalendar(false)} />
+        )}
+
+        {showSettings && (
+          <SettingsModal 
+            onClose={() => setShowSettings(false)}
+            onSaveSim={handleSaveSimulationFile}
+            onLoadSim={() => simFileInputRef.current?.click()}
+            onExportAgents={handleExportAgents}
+            onImportAgents={() => agentFileInputRef.current?.click()}
+            onReset={handleResetRequest}
+          />
+        )}
+
+        {showResetConfirm && (
+          <SystemResetModal 
+            onConfirm={executeSystemReset}
+            onClose={() => setShowResetConfirm(false)}
+          />
         )}
       </div>
     </div>

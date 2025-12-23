@@ -25,8 +25,8 @@ const CharacterForm: React.FC<CharacterFormProps> = ({ existingCharacters, onAdd
   const [gender, setGender] = useState<Gender>('무성');
   const [mbti, setMbti] = useState<MBTI>('ISTJ');
   const [baseHp, setBaseHp] = useState(100);
-  const [strength, setStrength] = useState(50);
-  const [sanity, setSanity] = useState(80);
+  const [strength, setStrength] = useState(30);
+  const [sanity, setSanity] = useState(50);
   
   const speciesList = db.getSpecies();
   const mbtiList = db.getMbtiList();
@@ -44,9 +44,9 @@ const CharacterForm: React.FC<CharacterFormProps> = ({ existingCharacters, onAdd
     setSpecies(speciesList[Math.floor(Math.random() * speciesList.length)]);
     setGender(genderList[Math.floor(Math.random() * genderList.length)]);
     setMbti(mbtiList[Math.floor(Math.random() * mbtiList.length)]);
-    setBaseHp(Math.floor(Math.random() * 70) + 80);
-    setStrength(Math.floor(Math.random() * 70) + 30);
-    setSanity(Math.floor(Math.random() * 50) + 50);
+    setBaseHp(Math.floor(Math.random() * 51) + 50); // 50 ~ 100
+    setStrength(Math.floor(Math.random() * 26) + 5); // 5 ~ 30
+    setSanity(Math.floor(Math.random() * 31) + 20); // 20 ~ 50
 
     if (existingCharacters.length > 0) {
       const numRels = Math.floor(Math.random() * 3);
@@ -154,32 +154,76 @@ const CharacterForm: React.FC<CharacterFormProps> = ({ existingCharacters, onAdd
           </div>
 
           <div className="grid grid-cols-3 gap-4 pb-4 border-b border-amber-900/20">
-            <div><label className="block text-amber-500/70 text-xs uppercase tracking-wider mb-1">체력</label><input type="number" value={baseHp} onChange={(e) => setBaseHp(Number(e.target.value))} className="w-full bg-neutral-950 border border-amber-900/50 text-amber-100 px-3 py-2 outline-none rounded-sm focus:border-amber-500 transition-colors"/></div>
-            <div><label className="block text-amber-500/70 text-xs uppercase tracking-wider mb-1">근력</label><input type="number" value={strength} onChange={(e) => setStrength(Number(e.target.value))} className="w-full bg-neutral-950 border border-amber-900/50 text-amber-100 px-3 py-2 outline-none rounded-sm focus:border-amber-500 transition-colors"/></div>
-            <div><label className="block text-amber-500/70 text-xs uppercase tracking-wider mb-1">정신</label><input type="number" value={sanity} onChange={(e) => setSanity(Number(e.target.value))} className="w-full bg-neutral-950 border border-amber-900/50 text-amber-100 px-3 py-2 outline-none rounded-sm focus:border-amber-500 transition-colors"/></div>
+            <div>
+              <label className="block text-amber-500/70 text-xs uppercase tracking-wider mb-1">체력 (Max 100)</label>
+              <input 
+                type="number" 
+                min="1" 
+                max="100" 
+                value={baseHp} 
+                onChange={(e) => setBaseHp(Math.min(100, Math.max(1, Number(e.target.value))))} 
+                className="w-full bg-neutral-950 border border-amber-900/50 text-amber-100 px-3 py-2 outline-none rounded-sm focus:border-amber-500 transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-amber-500/70 text-xs uppercase tracking-wider mb-1">근력 (Max 30)</label>
+              <input 
+                type="number" 
+                min="1" 
+                max="30" 
+                value={strength} 
+                onChange={(e) => setStrength(Math.min(30, Math.max(1, Number(e.target.value))))} 
+                className="w-full bg-neutral-950 border border-amber-900/50 text-amber-100 px-3 py-2 outline-none rounded-sm focus:border-amber-500 transition-colors"
+              />
+            </div>
+            <div>
+              <label className="block text-amber-500/70 text-xs uppercase tracking-wider mb-1">정신 (Max 50)</label>
+              <input 
+                type="number" 
+                min="1" 
+                max="50" 
+                value={sanity} 
+                onChange={(e) => setSanity(Math.min(50, Math.max(1, Number(e.target.value))))} 
+                className="w-full bg-neutral-950 border border-amber-900/50 text-amber-100 px-3 py-2 outline-none rounded-sm focus:border-amber-500 transition-colors"
+              />
+            </div>
           </div>
 
           <div className="space-y-4">
             <h3 className="text-amber-500 font-serif flex items-center gap-2 text-sm"><Link size={16} /> 초기 관계 설정</h3>
             {existingCharacters.length > 0 ? (
               <>
-                <div className="flex flex-col md:flex-row gap-2">
-                  <select value={selectedTarget} onChange={(e) => setSelectedTarget(e.target.value)} className="flex-1 bg-neutral-950 border border-amber-900/50 text-neutral-300 px-3 py-2 text-[13px] rounded-sm outline-none">
+                <div className="flex flex-col md:flex-row gap-2 items-stretch md:items-center">
+                  <select value={selectedTarget} onChange={(e) => setSelectedTarget(e.target.value)} className="flex-[2] bg-neutral-950 border border-amber-900/50 text-neutral-300 px-3 py-2 text-[13px] rounded-sm outline-none focus:border-amber-500">
                     <option value="">대상 선택...</option>
                     {existingCharacters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
-                  <select value={relationLabel} onChange={(e) => setRelationLabel(e.target.value)} className="flex-1 bg-neutral-950 border border-amber-900/50 text-amber-100 px-3 py-2 text-[13px] rounded-sm outline-none">
+                  
+                  <button 
+                    type="button" 
+                    onClick={() => setIsMutual(!isMutual)}
+                    className={`flex items-center justify-center px-3 border rounded-sm transition-all h-[38px] md:h-auto ${isMutual ? 'bg-amber-500/20 border-amber-500 text-amber-500' : 'bg-neutral-800 border-neutral-700 text-neutral-500 hover:text-neutral-300'}`}
+                    title={isMutual ? "상호 관계 (양방향)" : "단방향 관계"}
+                  >
+                    {isMutual ? <ArrowRightLeft size={16} /> : <ArrowRight size={16} />}
+                  </button>
+
+                  <select value={relationLabel} onChange={(e) => setRelationLabel(e.target.value)} className="flex-[1] bg-neutral-950 border border-amber-900/50 text-amber-100 px-3 py-2 text-[13px] rounded-sm outline-none focus:border-amber-500">
                     {relationshipTypes.map(rel => <option key={rel} value={rel}>{rel}</option>)}
                   </select>
-                  <button type="button" onClick={addRelationship} className="bg-neutral-800 text-amber-500 px-4 py-2 md:py-1 text-[13px] border border-amber-900/30 rounded-sm hover:bg-neutral-700 transition-colors">추가</button>
+                  <button type="button" onClick={addRelationship} className="bg-neutral-800 text-amber-500 px-4 py-2 text-[13px] border border-amber-900/30 rounded-sm hover:bg-neutral-700 transition-colors uppercase font-bold tracking-wider">추가</button>
                 </div>
+
                 <div className="max-h-32 overflow-y-auto space-y-1 bg-black/20 p-2 rounded-sm border border-amber-900/10">
                   {relationships.length === 0 && <p className="text-[11px] text-neutral-600 italic text-center py-2">설정된 초기 관계가 없습니다.</p>}
                   {relationships.map((r, i) => (
                     <div key={i} className="text-[11px] bg-black/40 p-2 border-l border-amber-500 flex justify-between items-center group">
-                      <span className="text-neutral-300">
-                        <span className="text-amber-500/80 font-bold">{r.targetName}</span> 요원과 
-                        <span className="text-amber-400 mx-1">[{r.label}]</span> 관계
+                      <span className="text-neutral-300 flex items-center gap-2">
+                        {r.isMutual ? <ArrowRightLeft size={12} className="text-blue-400" /> : <ArrowRight size={12} className="text-neutral-500" />}
+                        <span>
+                          <span className="text-amber-500/80 font-bold">{r.targetName}</span> 요원과 
+                          <span className="text-amber-400 mx-1">[{r.label}]</span> 관계
+                        </span>
                       </span>
                       <button type="button" onClick={() => setRelationships(prev => prev.filter((_, idx) => idx !== i))} className="text-red-900 group-hover:text-red-500 transition-colors font-bold uppercase text-[9px]">삭제</button>
                     </div>

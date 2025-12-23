@@ -11,7 +11,9 @@ export const SIMULATION_CONSTANTS = {
   // 나머지 15%는 대기(Idle)
   
   // 성공 확률 보정 계수
-  SUCCESS_DIVIDER: 200,  // (Strength + Sanity) / 200
+  // (Strength + Sanity) / SUCCESS_DIVIDER
+  // Max Strength 30 + Max Sanity 50 = 80. Divider 80 means max 100% chance.
+  SUCCESS_DIVIDER: 80,  
   
   // 데미지 관련
   DAMAGE_MIN: 5,
@@ -22,6 +24,7 @@ export const SIMULATION_CONSTANTS = {
   // 보상 관련
   REWARD_SANITY_SUCCESS: 2,
   REWARD_AFFINITY_NPC: 1,
+  CRITICAL_SUCCESS_CHANCE: 0.1, // 10% 확률로 대성공(스탯 증가)
   
   // 상호작용 관련
   INTERACTION_BASE_CHANCE: 0.6, // 기본 긍정 확률 60%
@@ -69,16 +72,12 @@ export function applyPhysicalDamage(char: Character, damage: number): { char: Ch
   if (targetPart.name === '목' && targetPart.current <= 0) {
     newChar.status = '사망';
     if (Math.random() < 0.25) {
-      // 25% 확률로 실행됨
       logs.push(`치명적 손상: ${char.name}의 목이 절단됨. 생명 반응 소실.`);
     } else if (Math.random() >= 0.25 && Math.random() < 0.5) {
-      // 25% 확률로 실행됨
       logs.push(`치명적 손상: ${char.name}의 경추 및 연부 조직이 완전히 짓이겨짐. 생존 가능성 전무.`);
     } else if (Math.random() >= 0.5 && Math.random() < 0.75) {
-      // 25% 확률로 실행됨
       logs.push(`치명적 손상: ${char.name}의 경추가 도려내짐. 생존 가능성 0%.`);
     } else {
-      // 25% 확률로 실행됨
       logs.push(`치명적 손상: ${char.name}의 목 조직이 완전히 유실됨. 생명 신호 소멸.`);
     }
   } else if (targetPart.name === '머리' && targetPart.current <= 0) {
@@ -118,16 +117,29 @@ export function applyPhysicalDamage(char: Character, damage: number): { char: Ch
 /**
  * 이상 현상 해결 시도 결과를 계산합니다.
  */
-export function resolveAnomalyOutcome(actor: Character): { success: boolean; damage: number } {
-  const successChance = (actor.strength + actor.sanity) / SIMULATION_CONSTANTS.SUCCESS_DIVIDER;
-  const isSuccess = Math.random() < successChance;
+export function resolveAnomalyOutcome(actor: Character): { success: boolean; damage: number; isCriticalSuccess: boolean } {
+  // 정신력 비율을 사용하여 확률 계산 (현재 정신력 / 최대 정신력)
+  // 정신력이 낮을수록 성공 확률 감소
+  const sanityRatio = actor.maxSanity > 0 ? actor.sanity / actor.maxSanity : 0;
   
+  // 기본 성공 확률: (근력 + 현재정신력보정) 
+  const performance = actor.strength + (sanityRatio * 50); 
+  const successChance = Math.min(0.95, performance / SIMULATION_CONSTANTS.SUCCESS_DIVIDER);
+  
+  const isSuccess = Math.random() < successChance;
+  let isCriticalSuccess = false;
   let damage = 0;
-  if (!isSuccess) {
+
+  if (isSuccess) {
+    // 성공 시 일정 확률로 대성공(성장)
+    if (Math.random() < SIMULATION_CONSTANTS.CRITICAL_SUCCESS_CHANCE) {
+        isCriticalSuccess = true;
+    }
+  } else {
     damage = Math.floor(Math.random() * (SIMULATION_CONSTANTS.DAMAGE_MAX - SIMULATION_CONSTANTS.DAMAGE_MIN)) + SIMULATION_CONSTANTS.DAMAGE_MIN;
   }
 
-  return { success: isSuccess, damage };
+  return { success: isSuccess, damage, isCriticalSuccess };
 }
 
 /**

@@ -1,13 +1,14 @@
 
 import React, { useState } from 'react';
 import { Character, BodyPart, Species, MBTI, Gender } from '../types';
-import { Heart, Brain, Zap, Skull, Users, Activity, AlertTriangle, XCircle, Settings, Check, X } from 'lucide-react';
+import { Heart, Brain, Zap, Skull, Users, Activity, AlertTriangle, XCircle, Settings, Check, X, Trash2, Radio } from 'lucide-react';
 import { db } from '../dataBase/manager';
 
 interface Props {
   character: Character;
   allCharacters?: Character[];
   onUpdate?: (updated: Character) => void;
+  onDelete?: (id: string) => void;
 }
 
 const BodyPartStatus: React.FC<{ part: BodyPart }> = ({ part }) => {
@@ -53,7 +54,7 @@ const BodyPartStatus: React.FC<{ part: BodyPart }> = ({ part }) => {
   );
 };
 
-const CharacterCard: React.FC<Props> = ({ character, allCharacters = [], onUpdate }) => {
+const CharacterCard: React.FC<Props> = ({ character, allCharacters = [], onUpdate, onDelete }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     name: character.name,
@@ -64,6 +65,8 @@ const CharacterCard: React.FC<Props> = ({ character, allCharacters = [], onUpdat
   });
 
   const isDead = character.status === '사망';
+  const isDiving = !!character.activeMission; // 심층 임무 수행 중 여부
+
   const speciesList = db.getSpecies();
   const mbtiList = db.getMbtiList();
   const genderList: Gender[] = ['남성', '여성', '무성', '유동적'];
@@ -76,6 +79,12 @@ const CharacterCard: React.FC<Props> = ({ character, allCharacters = [], onUpdat
       });
     }
     setIsEditing(false);
+  };
+
+  const handleDelete = () => {
+    if (onDelete) {
+      onDelete(character.id);
+    }
   };
 
   const handleCancel = () => {
@@ -95,8 +104,18 @@ const CharacterCard: React.FC<Props> = ({ character, allCharacters = [], onUpdat
     .slice(0, 3);
 
   return (
-    <div className={`relative flex flex-col p-4 border ${isDead ? 'border-red-900/50 bg-red-950/5 opacity-70 grayscale' : isEditing ? 'border-amber-500 bg-neutral-900 shadow-[0_0_20px_rgba(245,158,11,0.2)]' : 'border-amber-500/20 bg-neutral-950'} w-full shadow-xl rounded-sm transition-all hover:border-amber-500/40`}>
-      <div className="flex justify-between items-start mb-4 border-b border-neutral-800 pb-2">
+    <div className={`relative flex flex-col p-4 border ${isDead ? 'border-red-900/50 bg-red-950/5 opacity-70 grayscale' : isDiving ? 'border-purple-500/50 bg-purple-950/10 shadow-[0_0_15px_rgba(168,85,247,0.1)]' : isEditing ? 'border-amber-500 bg-neutral-900 shadow-[0_0_20px_rgba(245,158,11,0.2)]' : 'border-amber-500/20 bg-neutral-950'} w-full shadow-xl rounded-sm transition-all hover:border-amber-500/40 overflow-hidden`}>
+      
+      {/* Glitch Overlay for Diving Characters */}
+      {isDiving && !isDead && (
+        <div className="absolute top-0 right-0 p-1 pointer-events-none z-10">
+           <div className="flex items-center gap-1 bg-purple-900/80 text-purple-200 text-[9px] px-2 py-0.5 rounded-bl-lg font-bold uppercase animate-pulse border-l border-b border-purple-500/50">
+             <Radio size={10} className="animate-spin" /> Deep Dive
+           </div>
+        </div>
+      )}
+
+      <div className="flex justify-between items-start mb-4 border-b border-neutral-800 pb-2 relative z-0">
         <div className="flex-1">
           {isEditing ? (
             <div className="space-y-2 pr-2">
@@ -138,7 +157,7 @@ const CharacterCard: React.FC<Props> = ({ character, allCharacters = [], onUpdat
             </div>
           ) : (
             <>
-              <h3 className={`text-lg font-serif tracking-widest uppercase ${isDead ? 'text-red-800' : 'text-amber-500'}`}>{character.name}</h3>
+              <h3 className={`text-lg font-serif tracking-widest uppercase ${isDead ? 'text-red-800' : isDiving ? 'text-purple-400' : 'text-amber-500'}`}>{character.name}</h3>
               <p className="text-[10px] text-amber-500/40 uppercase font-mono tracking-tighter">{character.species} // {character.age}Y // {character.gender} // {character.mbti}</p>
             </>
           )}
@@ -147,8 +166,10 @@ const CharacterCard: React.FC<Props> = ({ character, allCharacters = [], onUpdat
           {!isDead && (
             isEditing ? (
               <div className="flex gap-1">
+                <button onClick={handleDelete} className="p-1 text-red-600 hover:bg-red-950/50 hover:text-red-500 rounded-sm transition-colors" title="요원 영구 삭제"><Trash2 size={14} /></button>
+                <div className="w-px h-4 bg-neutral-800 mx-1"></div>
                 <button onClick={handleSave} className="p-1 text-green-500 hover:bg-green-500/10 rounded-sm transition-colors"><Check size={14} /></button>
-                <button onClick={handleCancel} className="p-1 text-red-500 hover:bg-red-500/10 rounded-sm transition-colors"><X size={14} /></button>
+                <button onClick={handleCancel} className="p-1 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300 rounded-sm transition-colors"><X size={14} /></button>
               </div>
             ) : (
               <button onClick={() => setIsEditing(true)} className="p-1 text-amber-500/40 hover:text-amber-500 hover:bg-amber-500/10 rounded-sm transition-colors"><Settings size={14} /></button>
@@ -160,10 +181,13 @@ const CharacterCard: React.FC<Props> = ({ character, allCharacters = [], onUpdat
 
       <div className="grid grid-cols-3 gap-2 mb-5">
         <div className="flex flex-col items-center p-2 bg-neutral-900/30 border border-neutral-800 rounded-sm">
-          <Heart size={14} className="text-red-600 mb-1" /><span className="text-[9px] text-neutral-500 uppercase">HP</span><span className="text-xs font-mono font-bold text-neutral-200">{character.maxHp}</span>
+          <Heart size={14} className="text-red-600 mb-1" /><span className="text-[9px] text-neutral-500 uppercase">HP (MAX)</span><span className="text-xs font-mono font-bold text-neutral-200">{character.maxHp}</span>
         </div>
         <div className="flex flex-col items-center p-2 bg-neutral-900/30 border border-neutral-800 rounded-sm">
-          <Brain size={14} className="text-blue-500 mb-1" /><span className="text-[9px] text-neutral-500 uppercase">SAN</span><span className="text-xs font-mono font-bold text-neutral-200">{character.sanity}</span>
+          <Brain size={14} className="text-blue-500 mb-1" /><span className="text-[9px] text-neutral-500 uppercase">SAN</span>
+          <span className="text-xs font-mono font-bold text-neutral-200">
+            {character.sanity} <span className="text-[9px] text-neutral-500">/ {character.maxSanity}</span>
+          </span>
         </div>
         <div className="flex flex-col items-center p-2 bg-neutral-900/30 border border-neutral-800 rounded-sm">
           <Zap size={14} className="text-amber-500 mb-1" /><span className="text-[9px] text-neutral-500 uppercase">STR</span><span className="text-xs font-mono font-bold text-neutral-200">{character.strength}</span>
