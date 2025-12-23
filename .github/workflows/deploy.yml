@@ -25,7 +25,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
       - name: Install dependencies
         run: npm install
@@ -33,6 +32,7 @@ jobs:
       - name: Build
         run: npm run build
 
+      # Create .nojekyll to ensure files starting with _ (like Vite assets) are served correctly
       - name: Disable Jekyll
         run: touch dist/.nojekyll
 
