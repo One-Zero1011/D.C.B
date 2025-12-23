@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dimension Corp - Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Custom scrollbar for Webkit */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #0a0a0a; 
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #333; 
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #451a03; 
+      }
+      @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600&display=swap');
+    </style>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              serif: ['Cinzel', 'serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+            colors: {
+              amber: {
+                950: '#1a1005', // Custom deeper black-gold
+              }
+            },
+            fontSize: {
+              xs: ['0.9375rem', { lineHeight: '1.3rem' }], // 15px
+              sm: ['1.0625rem', { lineHeight: '1.5rem' }], // 17px
+              base: ['1.1875rem', { lineHeight: '1.75rem' }], // 19px
+              lg: ['1.3125rem', { lineHeight: '1.75rem' }], // 21px
+              xl: ['1.4375rem', { lineHeight: '1.75rem' }], // 23px
+              '2xl': ['1.6875rem', { lineHeight: '2rem' }], // 27px
+              '3xl': ['2.0625rem', { lineHeight: '2.25rem' }], // 33px
+              '4xl': ['2.4375rem', { lineHeight: '2.5rem' }], // 39px
+            }
+          }
+        }
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-neutral-950">
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
