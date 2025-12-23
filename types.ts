@@ -50,9 +50,40 @@ export interface MissionChoice {
   };
 }
 
+/**
+ * 시각적 효과(Visual Effect)의 종류
+ * 
+ * - `flood`: 텍스트가 화면을 뒤덮으며 증식하는 공포 효과 (예: "내 얼굴 내 얼굴...")
+ * - `error`: 텍스트가 붉은색으로 점멸하며 경고음 같은 시각적 노이즈 발생
+ * - `system_crash`: 치명적인 시스템 오류를 알리는 정적인 오버레이 (블루스크린 스타일)
+ */
+export type VisualEffectType = 'flood' | 'error' | 'system_crash';
+
+/**
+ * 글리치 효과의 세부 설정
+ */
+export interface VisualEffectConfig {
+  style: VisualEffectType; // 효과 스타일
+  duration?: number;       // 지속 시간 (ms)
+  intensity?: number;      // 강도 (1~10)
+  color?: string;          // 텍스트 색상 (Tailwind class, e.g., 'text-red-500')
+  fontSize?: string;       // 텍스트 크기 (Tailwind class, e.g., 'text-xl', 'text-6xl')
+  speed?: number;          // 텍스트 출력 간격 (ms). 낮을수록 빠름.
+}
+
 export interface MissionStage {
   id: string;
   description: string; // 나폴리탄/호러 지문
+  // 스테이지 진입 시 발동할 시각적 효과 설정
+  visualEffect?: {
+    text: string;           // 화면에 출력될 텍스트
+    type: VisualEffectType; // 효과 종류
+    duration?: number;      // 지속 시간 (ms, 기본 2000)
+    intensity?: number;     // 강도 (1~10, 기본 5)
+    color?: string;         // 색상 (Tailwind class, 기본 text-red-600)
+    fontSize?: string;      // 텍스트 크기 (선택 사항)
+    speed?: number;         // 텍스트 출력 간격 (ms, 선택 사항)
+  };
   choices: MissionChoice[];
 }
 
@@ -103,8 +134,10 @@ export interface LogEntry {
   id: string;
   timestamp: number;
   message: string;
-  type: 'action' | 'combat' | 'system' | 'death' | 'dialogue' | 'growth' | 'mission'; // mission 타입 추가
+  type: 'action' | 'combat' | 'system' | 'death' | 'dialogue' | 'growth' | 'mission' | 'glitch'; 
   characterId?: string;
+  // 글리치 효과를 위한 추가 설정 (type이 'glitch'일 때 사용)
+  effectConfig?: VisualEffectConfig;
 }
 
 export interface StoreItem {

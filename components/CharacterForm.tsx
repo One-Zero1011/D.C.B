@@ -31,6 +31,7 @@ const CharacterForm: React.FC<CharacterFormProps> = ({ existingCharacters, onAdd
   const speciesList = db.getSpecies();
   const mbtiList = db.getMbtiList();
   const relationshipTypes = db.getRelationships();
+  const relationshipCategories = db.getRelationshipCategories(); // 카테고리 데이터 로드
   const genderList: Gender[] = ['남성', '여성', '무성', '유동적'];
 
   const [relationships, setRelationships] = useState<RelationshipDraft[]>([]);
@@ -208,8 +209,20 @@ const CharacterForm: React.FC<CharacterFormProps> = ({ existingCharacters, onAdd
                     {isMutual ? <ArrowRightLeft size={16} /> : <ArrowRight size={16} />}
                   </button>
 
-                  <select value={relationLabel} onChange={(e) => setRelationLabel(e.target.value)} className="flex-[1] bg-neutral-950 border border-amber-900/50 text-amber-100 px-3 py-2 text-[13px] rounded-sm outline-none focus:border-amber-500">
-                    {relationshipTypes.map(rel => <option key={rel} value={rel}>{rel}</option>)}
+                  <select 
+                    value={relationLabel} 
+                    onChange={(e) => setRelationLabel(e.target.value)} 
+                    className="flex-[1] bg-neutral-950 border border-amber-900/50 text-amber-100 px-3 py-2 text-[13px] rounded-sm outline-none focus:border-amber-500"
+                  >
+                    {Object.entries(relationshipCategories).map(([category, types]) => (
+                      <optgroup label={category} key={category} className="text-amber-600 bg-neutral-900 font-bold">
+                        {types.map(type => (
+                          <option key={type} value={type} className="text-neutral-300 bg-neutral-950 font-normal">
+                            {type}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
                   </select>
                   <button type="button" onClick={addRelationship} className="bg-neutral-800 text-amber-500 px-4 py-2 text-[13px] border border-amber-900/30 rounded-sm hover:bg-neutral-700 transition-colors uppercase font-bold tracking-wider">추가</button>
                 </div>

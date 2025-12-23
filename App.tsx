@@ -14,6 +14,7 @@ import ArchiveRoom from './components/ArchiveRoom';
 import ContentWarningModal from './components/ContentWarningModal';
 import { processTurn } from './services/simulationEngine';
 import { getVirtualDate, formatVirtualDate } from './dataBase/dateUtils';
+import { db } from './dataBase/manager';
 import { 
   Play, Pause, Plus, FastForward, Monitor, Coffee, 
   ShoppingCart, Calendar as CalendarIcon, HeartHandshake, 
@@ -33,6 +34,7 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false); 
   const [showWarning, setShowWarning] = useState(true);
+  const [isDevMode, setIsDevMode] = useState(false);
   const [speed, setSpeed] = useState(1000);
   const [currentDate, setCurrentDate] = useState(new Date());
   
@@ -55,6 +57,7 @@ const App: React.FC = () => {
           if (parsed.currentDate) {
             setCurrentDate(new Date(parsed.currentDate));
           }
+          // 개발자 모드 상태 복구 (선택 사항, 여기서는 초기화하지 않음)
           setLogs(prev => [...prev, {
             id: 'auto-load',
             timestamp: Date.now(),
@@ -222,6 +225,7 @@ const App: React.FC = () => {
     setCurrentDate(new Date());
     setView('mission');
     setSpeed(1000);
+    setIsDevMode(false);
     
     let logId = 'reset-init';
     try { logId = crypto.randomUUID(); } catch(e) {}
@@ -232,6 +236,42 @@ const App: React.FC = () => {
       type: 'system',
       message: '시스템 리부트 완료. 데이터베이스가 초기화되었습니다. 요원을 호출하여 시뮬레이션을 시작하십시오.'
     }]);
+  };
+
+  const handleForceStartMission = (missionId: string, stageId?: string) => {
+    const activeChars = characters.filter(c => c.status === '생존');
+    if (activeChars.length === 0) {
+      alert("임무를 수행할 생존 요원이 없습니다.");
+      return;
+    }
+
+    const mission = db.getMissionById(missionId);
+    if (!mission) return;
+
+    const targetStageId = stageId || mission.initialStageId;
+
+    // 모든 생존 요원을 해당 미션으로 강제 진입
+    setCharacters(prev => prev.map(c => {
+      if (c.status !== '생존') return c;
+      return {
+        ...c,
+        activeMission: {
+          missionId: missionId,
+          stageId: targetStageId,
+          turnCount: 0
+        }
+      };
+    }));
+
+    setLogs(prev => [...prev, {
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+      type: 'system',
+      message: `[DEV] 관리자 권한으로 임무 강제 시작: "${mission.title}" (Stage: ${targetStageId})`
+    }]);
+
+    setView('mission');
+    setShowSettings(false);
   };
 
   // --- File I/O Functions ---
@@ -510,6 +550,9 @@ const App: React.FC = () => {
             <div className="text-amber-500/80 tracking-widest font-bold">
               {formatVirtualDate(getVirtualDate(currentDate))}
             </div>
+            {isDevMode && (
+              <span className="text-green-500 font-bold uppercase tracking-widest bg-green-950/30 px-2 py-0.5 rounded border border-green-800">Dev Mode Active</span>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <button onClick={() => setShowCalendar(true)} className="flex items-center gap-2 px-3 py-1.5 border border-amber-900/50 bg-neutral-900 text-amber-500/70 hover:text-amber-400 hover:border-amber-500/50 transition-all rounded-sm uppercase tracking-wider">
@@ -543,6 +586,9 @@ const App: React.FC = () => {
             onExportAgents={handleExportAgents}
             onImportAgents={() => agentFileInputRef.current?.click()}
             onReset={handleResetRequest}
+            isDevMode={isDevMode}
+            onToggleDevMode={() => setIsDevMode(!isDevMode)}
+            onForceMission={handleForceStartMission}
           />
         )}
 

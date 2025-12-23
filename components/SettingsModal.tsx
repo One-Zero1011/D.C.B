@@ -1,6 +1,7 @@
 
-import React from 'react';
-import { X, FileDown, FileUp, Users, Download, RotateCcw, Save, ShieldAlert, Database, HardDrive } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, FileDown, FileUp, Users, Download, RotateCcw, Save, ShieldAlert, Database, HardDrive, Terminal, Play, CheckCircle2, ChevronRight, ChevronDown, CornerDownRight } from 'lucide-react';
+import { db } from '../dataBase/manager';
 
 interface Props {
   onClose: () => void;
@@ -9,6 +10,9 @@ interface Props {
   onExportAgents: () => void;
   onImportAgents: () => void;
   onReset: () => void;
+  isDevMode?: boolean;
+  onToggleDevMode?: () => void;
+  onForceMission?: (missionId: string, stageId?: string) => void;
 }
 
 const SettingsModal: React.FC<Props> = ({ 
@@ -17,8 +21,18 @@ const SettingsModal: React.FC<Props> = ({
   onLoadSim, 
   onExportAgents, 
   onImportAgents,
-  onReset
+  onReset,
+  isDevMode = false,
+  onToggleDevMode,
+  onForceMission
 }) => {
+  const missions = db.getMissions();
+  const [expandedMissionId, setExpandedMissionId] = useState<string | null>(null);
+
+  const toggleMission = (id: string) => {
+    setExpandedMissionId(prev => prev === id ? null : id);
+  };
+
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] backdrop-blur-sm p-0 md:p-4">
       <div className="bg-neutral-900 border-none md:border md:border-amber-500/50 p-4 md:p-6 w-full h-full md:h-auto md:max-h-[90vh] md:max-w-3xl shadow-[0_0_30px_rgba(245,158,11,0.2)] rounded-none md:rounded-sm overflow-y-auto custom-scrollbar text-[15px] flex flex-col animate-in fade-in zoom-in-95 duration-300">
@@ -117,7 +131,91 @@ const SettingsModal: React.FC<Props> = ({
             </div>
           </div>
 
-          {/* Section 3: Danger Zone */}
+          {/* Section 3: Developer Tools */}
+          {onToggleDevMode && (
+             <div className="space-y-4">
+               <div className="flex items-center gap-2 text-green-500/80 border-l-4 border-green-500 pl-3">
+                 <Terminal size={20} />
+                 <h3 className="text-sm font-bold uppercase tracking-wider">개발자 도구 (Developer Console)</h3>
+               </div>
+               <div className={`p-4 border rounded-sm transition-colors ${isDevMode ? 'bg-green-950/10 border-green-500/30' : 'bg-black/30 border-neutral-800'}`}>
+                  <div className="flex items-center justify-between mb-4">
+                     <div className="flex flex-col">
+                        <span className={`text-sm font-bold uppercase ${isDevMode ? 'text-green-500' : 'text-neutral-500'}`}>
+                           {isDevMode ? 'SYSTEM OVERRIDE: ACTIVE' : 'Developer Access'}
+                        </span>
+                        <span className="text-[10px] text-neutral-500">
+                           미션 강제 진입 및 디버깅 기능을 활성화합니다.
+                        </span>
+                     </div>
+                     <button 
+                        onClick={onToggleDevMode}
+                        className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${isDevMode ? 'bg-green-600' : 'bg-neutral-700'}`}
+                     >
+                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform duration-300 shadow-md ${isDevMode ? 'left-7' : 'left-1'}`} />
+                     </button>
+                  </div>
+
+                  {isDevMode && onForceMission && (
+                     <div className="animate-in fade-in slide-in-from-top-2 duration-300 mt-4 border-t border-green-900/30 pt-4">
+                        <h4 className="text-[11px] text-green-500/70 uppercase tracking-widest font-bold mb-3 flex items-center gap-2">
+                           <Play size={10} /> Mission Force Start
+                        </h4>
+                        <div className="flex flex-col gap-2">
+                           {missions.map(mission => (
+                              <div key={mission.id} className="bg-black/40 border border-green-500/20 rounded-sm overflow-hidden">
+                                 <div className="flex items-center justify-between p-2 hover:bg-green-500/10 transition-colors">
+                                    <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => toggleMission(mission.id)}>
+                                       <button className="text-neutral-500 hover:text-green-400">
+                                          {expandedMissionId === mission.id ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                       </button>
+                                       <div className="flex flex-col">
+                                          <span className="text-xs font-bold text-neutral-300">{mission.title}</span>
+                                          <span className="text-[9px] text-neutral-600 font-mono">{mission.id}</span>
+                                       </div>
+                                    </div>
+                                    <button 
+                                       onClick={() => onForceMission(mission.id)}
+                                       className="p-1.5 bg-green-900/20 hover:bg-green-600 hover:text-white text-green-500 rounded text-[10px] font-bold uppercase tracking-wider border border-green-900/30"
+                                    >
+                                       Start Default
+                                    </button>
+                                 </div>
+
+                                 {expandedMissionId === mission.id && (
+                                    <div className="bg-black/20 border-t border-green-500/10 p-2 pl-8 space-y-1 animate-in slide-in-from-top-1 duration-200">
+                                       {Object.values(mission.stages).map(stage => (
+                                          <div key={stage.id} className="flex items-center justify-between group p-1.5 hover:bg-green-500/5 rounded-sm">
+                                             <div className="flex items-center gap-2 text-neutral-400">
+                                                <CornerDownRight size={10} className="text-neutral-600" />
+                                                <div className="flex flex-col">
+                                                   <span className="text-[11px] font-mono group-hover:text-green-400 transition-colors">{stage.id}</span>
+                                                   <span className="text-[9px] text-neutral-600 truncate max-w-[200px]">{stage.description.slice(0, 30)}...</span>
+                                                </div>
+                                             </div>
+                                             <button 
+                                                onClick={() => onForceMission(mission.id, stage.id)}
+                                                className="text-[9px] text-neutral-500 hover:text-green-400 border border-transparent hover:border-green-500/30 px-2 py-0.5 rounded transition-all"
+                                             >
+                                                Jump
+                                             </button>
+                                          </div>
+                                       ))}
+                                    </div>
+                                 )}
+                              </div>
+                           ))}
+                           {missions.length === 0 && (
+                              <div className="text-[11px] text-neutral-600 italic p-2">등록된 미션이 없습니다.</div>
+                           )}
+                        </div>
+                     </div>
+                  )}
+               </div>
+             </div>
+          )}
+
+          {/* Section 4: Danger Zone */}
           <div className="space-y-4 pt-4">
             <div className="flex items-center gap-2 text-red-500/80 border-l-4 border-red-500 pl-3">
               <ShieldAlert size={20} />

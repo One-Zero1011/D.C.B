@@ -1,5 +1,5 @@
 import { MBTI, Species, Character, Body, BodyPart, StoreItem, CalendarEvent, Mission } from "../types";
-import { INITIAL_SPECIES_LIST, INITIAL_MBTI_LIST, INITIAL_RELATIONSHIP_TYPES } from "./seeds/classifications";
+import { INITIAL_SPECIES_LIST, INITIAL_MBTI_LIST, INITIAL_RELATIONSHIP_TYPES, RELATIONSHIP_CATEGORIES } from "./seeds/classifications";
 import { INITIAL_MBTI_TRAITS, INITIAL_MENTAL_STATES } from "./seeds/traits";
 import { INITIAL_ANOMALIES } from "./seeds/world";
 import { INITIAL_NPCS, NPC_DIALOGUES, NPC, DialogueNode } from "./seeds/npcs";
@@ -8,6 +8,8 @@ import { INITIAL_CALENDAR_EVENTS } from "./seeds/calendarEvents";
 import { INITIAL_MISSIONS } from "./seeds/missions";
 import { GROWTH_LOGS, ANOMALY_LOGS, IDLE_LOGS } from "./seeds/actionLogs";
 import { MBTI_LOGS } from "./seeds/mbtiLogs";
+import { MISSION_REACTIONS } from "./seeds/missionReactions";
+import { RELATIONSHIP_LOGS } from "./seeds/relationshipLogs";
 
 class DatabaseManager {
   private anomalies: string[];
@@ -232,9 +234,30 @@ class DatabaseManager {
   }
 
   getMbtiActionLog(name: string, mbti: MBTI): string {
-    const templates = MBTI_LOGS[mbti] || IDLE_LOGS; // Fallback to IDLE if MBTI not found (should not happen)
+    const templates = MBTI_LOGS[mbti] || IDLE_LOGS; 
     const template = templates[Math.floor(Math.random() * templates.length)];
     return template.split('{name}').join(name);
+  }
+
+  getMissionReaction(missionId: string, mbti: MBTI, name: string): string {
+    const mission = MISSION_REACTIONS[missionId];
+    if (!mission) return `... (${name}는 긴장한 듯 침묵합니다.)`;
+
+    const reactions = mission[mbti];
+    if (!reactions || reactions.length === 0) return `... (${name}는 상황을 주시합니다.)`;
+
+    const reaction = reactions[Math.floor(Math.random() * reactions.length)];
+    return reaction.split('{name}').join(name);
+  }
+
+  getRelationshipLog(actorName: string, targetName: string, relation: string): string {
+    const templates = RELATIONSHIP_LOGS[relation];
+    if (!templates || templates.length === 0) {
+       // Fallback for undefined relationships
+       return `${actorName}, ${targetName}와(과) 상호작용합니다. [${relation}]`;
+    }
+    const template = templates[Math.floor(Math.random() * templates.length)];
+    return template.split('{actor}').join(actorName).split('{target}').join(targetName);
   }
 
   // --- Metadata Getters ---
@@ -247,6 +270,7 @@ class DatabaseManager {
   getMbtiList() { return this.mbtiList; }
   getMbtiTrait(mbti: MBTI) { return this.mbtiTraits[mbti]; }
   getRelationships() { return this.relationships; }
+  getRelationshipCategories() { return RELATIONSHIP_CATEGORIES; }
   getMentalStates() { return this.mentalStates; }
 }
 

@@ -25,23 +25,41 @@ const ContentWarningModal: React.FC<Props> = ({ onConfirm }) => {
           <h1 className="text-3xl font-serif text-red-600 font-bold tracking-widest mb-2 uppercase drop-shadow-md">
             ⚠️ 콘텐츠 워닝
           </h1>
-          <span className="text-[10px] text-red-800 uppercase tracking-[0.6em] mb-8 font-mono border-b border-red-900/30 pb-4 w-full">
+          <span className="text-[10px] text-red-800 uppercase tracking-[0.6em] mb-6 font-mono border-b border-red-900/30 pb-4 w-full">
             Restricted Access // Sensitive Content
           </span>
 
-          <div className="space-y-6 text-neutral-300 text-sm leading-relaxed mb-10 w-full px-4">
-            <div className="bg-red-950/20 border border-red-900/30 p-4 rounded-sm">
-              <p className="font-bold text-red-500 mb-2 flex items-center justify-center gap-2">
-                <AlertTriangle size={14} /> 주의: 민감한 내용 포함
-              </p>
-              <p className="text-neutral-400 text-xs">
-                이 콘텐츠에는 일부 민감한 주제<br/>
-                <span className="text-red-400 font-bold">(예: 고어, 혐오, 폭력, 자해, 고문 등)</span>가<br/>
-                포함되어 있습니다.
-              </p>
+          <div className="space-y-4 text-neutral-300 text-sm leading-relaxed mb-8 w-full px-2">
+            
+            {/* Integrated Warning Block */}
+            <div className="bg-red-950/20 border border-red-900/30 p-5 rounded-sm flex flex-col gap-4 text-center">
+              
+              {/* Sensitive Topics */}
+              <div className="flex flex-col gap-2">
+                <p className="font-bold text-red-500 flex items-center justify-center gap-2 mb-1">
+                  <AlertTriangle size={16} /> 주의: 민감한 내용 포함
+                </p>
+                <p className="text-neutral-400 text-xs leading-relaxed">
+                  이 콘텐츠에는 일부 민감한 주제<br/>
+                  <span className="text-red-400 font-bold">(예: 고어, 혐오, 폭력, 자해, 고문 등)</span>가<br/>
+                  포함되어 있습니다.
+                </p>
+              </div>
+
+              {/* Divider */}
+              <div className="w-full border-t border-red-900/20"></div>
+
+              {/* Photosensitivity */}
+              <div className="text-neutral-400 text-xs leading-relaxed">
+                 <span className="text-red-400 font-bold mr-1">[주의]</span> 
+                 일부 사용자에게서  <span className="text-red-400 font-bold">광과민성 발작</span>을 유발할 수 있는<br/>
+                 <span className="text-red-400 font-bold">깜박이는 빛, 빠른 화면 전환, 기하학적 패턴</span> 등을<br/> 
+                 포함하고 있습니다.
+              </div>
+
             </div>
             
-            <p className="text-xs text-neutral-500 font-mono tracking-tight leading-loose">
+            <p className="text-xs text-neutral-500 font-mono tracking-tight leading-loose pt-2">
               해당 콘텐츠는 민감하고 충격적인 내용을 포함하고 있을 수 있습니다.<br/>
               사용자의 정서적 안정을 위해<br/> 
               <span className="underline decoration-red-900 underline-offset-4">주의 깊게 접근해 주시기 바랍니다.</span>
