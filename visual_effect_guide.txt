@@ -1,0 +1,142 @@
+================================================================================
+[ Dimension Corp: Visual Effect System Guide ]
+================================================================================
+
+본 문서는 시뮬레이션 내에서 발생하는 특수 연출(Visual Effect)의 타입별 상세 설정법을 다룹니다.
+이 설정은 MissionStage의 visualEffect 속성이나 개발자 도구의 Trigger 기능을 통해 사용됩니다.
+
+--------------------------------------------------------------------------------
+1. 공통 변수 (Global Variables)
+--------------------------------------------------------------------------------
+모든 이펙트 타입에서 공통적으로 참조하거나 영향을 주는 변수들입니다.
+
+- text (string): 화면 중앙 혹은 특정 위치에 출력될 핵심 메시지.
+- type (VisualEffectType): 사용할 이펙트의 식별자.
+- duration (number): 효과가 유지되는 총 시간 (단위: ms). 기본값: 2000~3000ms.
+- intensity (number): 효과의 강도 (보통 1~10 사이 권장). 
+  - 개수, 속도, 흔들림 정도 등에 영향을 줌.
+- color (string): 텍스트의 색상 (Tailwind CSS 클래스 사용). 예: 'text-red-500'.
+- fontSize (string): 텍스트의 크기 (Tailwind CSS 클래스 사용). 예: 'text-4xl'.
+
+--------------------------------------------------------------------------------
+2. 이펙트 타입별 상세 변수 및 동작
+--------------------------------------------------------------------------------
+
+(1) flood
+- 설명: 입력된 text가 화면 전체를 미친 듯이 채우며 증식하는 연출.
+- 전용 변수:
+  - speed (number): 텍스트가 추가되는 간격 (ms). 낮을수록 빠름.
+- 예시:
+  {
+    text: "나를 봐",
+    type: "flood",
+    intensity: 8,
+    speed: 50,
+    color: "text-red-600"
+  }
+
+(2) emojiPopUp (grotesque eye-open)
+- 설명: 화면 곳곳에 기괴하게 눈을 부릅뜨는 듯한 애니메이션과 함께 이모지가 나타남.
+- 전용 변수:
+  - customEmojis (string[]): 출력할 이모지 배열.
+  - minEmojiSize (number): 최소 크기 (px).
+  - maxEmojiSize (number): 최대 크기 (px).
+- 예시:
+  {
+    text: "관측됨",
+    type: "emojiPopUp",
+    customEmojis: ["👁️", "🧿"],
+    minEmojiSize: 80,
+    maxEmojiSize: 200,
+    intensity: 10
+  }
+
+(3) reality_tear (Overhauled)
+- 설명: 화면이 날카로운 지그재그 형태로 베이며, 틈새로 보라색 아우라와 소스 코드가 흐름.
+- 전용 변수: (공통 변수 위주로 동작)
+- 예시:
+  {
+    text: "차원 붕괴",
+    type: "reality_tear",
+    duration: 4000
+  }
+
+(4) screen_crack
+- 설명: 유리가 박살 난 것처럼 화면이 여러 조각으로 쪼개지고 중앙에 균열선이 생김.
+- 전용 변수: (공통 변수 위주로 동작)
+- 예시:
+  {
+    text: "Display Error",
+    type: "screen_crack",
+    color: "text-white"
+  }
+
+(5) vhs_glitch
+- 설명: 오래된 비디오 테이프의 노이즈, 지지직거리는 라인, 색수차 연출.
+- 전용 변수: (공통 변수 위주로 동작)
+- 예시:
+  {
+    text: "REPLAYING...",
+    type: "vhs_glitch",
+    fontSize: "text-2xl"
+  }
+
+(6) quantum_ghost
+- 설명: 화면 전체가 미세하게 떨리며 메시지의 거대한 잔상이 배경에 깔리는 몽환적 효과.
+- 전용 변수: (공통 변수 위주로 동작)
+- 예시:
+  {
+    text: "중첩된 존재",
+    type: "quantum_ghost",
+    intensity: 3
+  }
+
+(7) data_leak
+- 설명: 화면 상단에서 16진수(Hex) 데이터 조각들이 비처럼 쏟아져 내리는 연출.
+- 전용 변수: (공통 변수 위주로 동작)
+- 예시:
+  {
+    text: "MEMORY_DUMP",
+    type: "data_leak",
+    color: "text-amber-500"
+  }
+
+(8) emoji_swarm
+- 설명: 화면에 수많은 이모지가 떠다니며 불규칙하게 깜빡임.
+- 전용 변수:
+  - customEmojis (string[]): 이모지 배열.
+- 예시:
+  {
+    text: "정신 오염",
+    type: "emoji_swarm",
+    customEmojis: ["🧠", "💀", "🩸"],
+    intensity: 7
+  }
+
+(9) error / system_crash
+- 설명: 각각 '경고 팝업 상자'와 '윈도우 블루스크린' 스타일의 전형적인 오류 연출.
+- 예시 (system_crash):
+  {
+    text: "FATAL ERROR",
+    type: "system_crash",
+    duration: 5000
+  }
+
+--------------------------------------------------------------------------------
+3. 데이터베이스(Mission) 적용 가이드
+--------------------------------------------------------------------------------
+미션 파일(`dataBase/seeds/missions.ts`) 내에서 다음과 같이 사용하십시오.
+
+"stage_id": {
+  id: "stage_id",
+  description: "스테이지 설명...",
+  visualEffect: {
+    text: "출력 메시지",
+    type: "reality_tear",
+    duration: 3000,
+    intensity: 5
+    // 필요한 경우 다른 변수 추가
+  },
+  choices: [...]
+}
+================================================================================

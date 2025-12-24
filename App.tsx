@@ -12,10 +12,12 @@ import Store from './components/Store';
 import MemorialSpace from './components/MemorialSpace';
 import ArchiveRoom from './components/ArchiveRoom';
 import ContentWarningModal from './components/ContentWarningModal';
+import AscensionOverlay from './components/AscensionOverlay'; 
 import { processTurn } from './services/simulationEngine';
 import { getVirtualDate, formatVirtualDate } from './dataBase/dateUtils';
 import { db } from './dataBase/manager';
 import { createVisualEffectLog, VisualEffectOptions } from './dataBase/visualEffectService';
+import { getSyncRate } from './dataBase/storyService'; 
 import { 
   Play, Pause, Plus, FastForward, Monitor, Coffee, 
   ShoppingCart, Calendar as CalendarIcon, HeartHandshake, 
@@ -39,13 +41,21 @@ const App: React.FC = () => {
   const [speed, setSpeed] = useState(1000);
   const [currentDate, setCurrentDate] = useState(new Date());
   
+  // 수동 보정 점수 (개발자 도구용)
+  const [manualSyncBonus, setManualSyncBonus] = useState(0);
+  
+  // 승천 연출 오버레이 노출 여부 관리
+  const [isAscensionDismissed, setIsAscensionDismissed] = useState(false);
+  
+  // 3차원 승천 여부 체크 (수동 보너스 포함)
+  const isAscended = getSyncRate(characters, logs, manualSyncBonus) >= 100;
+
   // 파일 입력을 위한 Refs
   const simFileInputRef = useRef<HTMLInputElement>(null);
   const agentFileInputRef = useRef<HTMLInputElement>(null);
 
   // --- Auto Save & Load Logic ---
   
-  // 초기 로드: 자동 저장된 데이터가 있으면 불러옴
   useEffect(() => {
     const rawData = localStorage.getItem(SAVE_KEY);
     if (rawData) {
@@ -55,10 +65,12 @@ const App: React.FC = () => {
           setCharacters(parsed.characters);
           setCredits(parsed.credits || 0);
           setLogs(parsed.logs || []);
+          setManualSyncBonus(parsed.manualSyncBonus || 0);
+          // 저장된 데이터가 이미 승천 상태라면 연출을 건너뛰도록 설정할 수도 있으나,
+          // 여기서는 세션 내에서만 dismiss를 유지합니다.
           if (parsed.currentDate) {
             setCurrentDate(new Date(parsed.currentDate));
           }
-          // 개발자 모드 상태 복구 (선택 사항, 여기서는 초기화하지 않음)
           setLogs(prev => [...prev, {
             id: 'auto-load',
             timestamp: Date.now(),
@@ -79,17 +91,17 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // 상태 변경 시 자동 저장
   useEffect(() => {
     const saveData = {
       characters,
       credits,
       logs,
+      manualSyncBonus,
       currentDate: currentDate.getTime(),
       timestamp: Date.now()
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
-  }, [characters, credits, logs, currentDate]);
+  }, [characters, credits, logs, manualSyncBonus, currentDate]);
 
   // --- Simulation Engine ---
 
@@ -139,11 +151,11 @@ const App: React.FC = () => {
 
   useEffect(() => {
     let interval: number | undefined;
-    if (isSimulating && characters.length > 0) {
+    if (isSimulating && characters.length > 0 && !isAscended) {
       interval = window.setInterval(executeTurn, speed);
     }
     return () => clearInterval(interval);
-  }, [isSimulating, characters, speed, executeTurn]);
+  }, [isSimulating, characters, speed, executeTurn, isAscended]);
 
   // --- Handlers ---
 
@@ -151,14 +163,11 @@ const App: React.FC = () => {
     setCharacters(prev => {
       let updatedList = [...prev, newChar];
 
-      // 상호 관계(Mutual) 처리: 새로운 캐릭터가 상호 관계로 설정한 대상들의 상태도 업데이트
       if (relationships && relationships.length > 0) {
         updatedList = updatedList.map(existingChar => {
-          // 해당 기존 캐릭터가 새로운 캐릭터와의 관계 대상인지 확인
           const draft = relationships.find(r => r.targetId === existingChar.id);
           
           if (draft && draft.isMutual) {
-             // 상호 관계이므로 기존 캐릭터에게도 관계 및 호감도 추가
              const isNegative = ["라이벌", "앙숙", "적", "혐오", "경계", "불신", "무시"].includes(draft.label);
              const baseAffinity = isNegative ? -30 : 20;
 
@@ -166,7 +175,7 @@ const App: React.FC = () => {
                ...existingChar,
                relationships: {
                  ...existingChar.relationships,
-                 [newChar.id]: draft.label // 동일한 라벨 사용 (상호 친구 등)
+                 [newChar.id]: draft.label 
                },
                affinities: {
                  ...existingChar.affinities,
@@ -218,11 +227,13 @@ const App: React.FC = () => {
     setIsSimulating(false);
     setShowSettings(false); 
     setShowResetConfirm(false);
+    setIsAscensionDismissed(false); // 리셋 시 승천 해제 상태도 초기화
     
     localStorage.removeItem(SAVE_KEY);
 
     setCharacters([]);
     setCredits(0);
+    setManualSyncBonus(0);
     setCurrentDate(new Date());
     setView('mission');
     setSpeed(1000);
@@ -251,7 +262,6 @@ const App: React.FC = () => {
 
     const targetStageId = stageId || mission.initialStageId;
 
-    // 모든 생존 요원을 해당 미션으로 강제 진입
     setCharacters(prev => prev.map(c => {
       if (c.status !== '생존') return c;
       return {
@@ -280,8 +290,6 @@ const App: React.FC = () => {
     setLogs(prev => [...prev, log]);
   };
 
-  // --- File I/O Functions ---
-
   const downloadFile = (data: any, filename: string) => {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -301,6 +309,7 @@ const App: React.FC = () => {
       characters,
       credits,
       logs,
+      manualSyncBonus,
       currentDate: currentDate.getTime(),
       timestamp: Date.now()
     };
@@ -328,6 +337,8 @@ const App: React.FC = () => {
           setCharacters(parsed.characters || []);
           setCredits(parsed.credits || 0);
           setLogs(parsed.logs || []);
+          setManualSyncBonus(parsed.manualSyncBonus || 0);
+          setIsAscensionDismissed(false);
           if (parsed.currentDate) setCurrentDate(new Date(parsed.currentDate));
           setShowSettings(false); 
           
@@ -436,6 +447,14 @@ const App: React.FC = () => {
         className="hidden" 
       />
 
+      {/* 최종 승천 연출 추가 - Dismiss 되지 않은 경우에만 표시 */}
+      {isAscended && !isAscensionDismissed && (
+        <AscensionOverlay 
+          onReset={executeSystemReset} 
+          onContinue={() => setIsAscensionDismissed(true)} 
+        />
+      )}
+
       {showWarning && (
         <ContentWarningModal onConfirm={() => setShowWarning(false)} />
       )}
@@ -538,7 +557,7 @@ const App: React.FC = () => {
             </div>
           ) : (
             <div className="h-full animate-in fade-in zoom-in-95 duration-500">
-              <ArchiveRoom characters={characters} />
+              <ArchiveRoom characters={characters} logs={logs} manualBonus={manualSyncBonus} />
             </div>
           )}
         </main>
@@ -596,6 +615,8 @@ const App: React.FC = () => {
             onToggleDevMode={() => setIsDevMode(!isDevMode)}
             onForceMission={handleForceStartMission}
             onTriggerEffect={handleTriggerVisualEffect}
+            manualSyncBonus={manualSyncBonus}
+            onAdjustManualBonus={setManualSyncBonus}
           />
         )}
 

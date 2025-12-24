@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Character } from '../types';
-import { Flower, Ghost, History, Award, Quote } from 'lucide-react';
+import { Flower, Ghost, History, Award, Quote, MessageSquareQuote } from 'lucide-react';
 import { generateMemorialScript } from '../dataBase/memorialService';
 
 interface Props {
@@ -21,7 +21,7 @@ const MemorialSpace: React.FC<Props> = ({ characters }) => {
     });
   };
 
-  // 사망 캐릭터별 추모 스크립트 메모이제이션 (성능 및 일관성 유지)
+  // 사망 캐릭터별 추모 스크립트 메모이제이션
   const memorialScripts = useMemo(() => {
     const scripts: Record<string, string> = {};
     deadCharacters.forEach(char => {
@@ -88,8 +88,9 @@ const MemorialSpace: React.FC<Props> = ({ characters }) => {
                   </div>
                 </div>
 
-                <div className="text-center pt-2 w-full">
-                  <p className="text-[11px] text-zinc-500 italic leading-relaxed min-h-[40px]">
+                <div className="text-center pt-2 w-full bg-zinc-950/30 p-3 rounded-sm border border-zinc-800/30 relative">
+                  <MessageSquareQuote size={12} className="absolute -top-1.5 -left-1.5 text-zinc-700" />
+                  <p className="text-[11px] text-zinc-400 italic leading-relaxed break-words font-serif">
                     {memorialScripts[char.id]}
                   </p>
                 </div>

@@ -50,7 +50,10 @@ export const processTurn = (characters: Character[]): { updatedCharacters: Chara
                type: stage.visualEffect.type,
                duration: stage.visualEffect.duration,
                intensity: stage.visualEffect.intensity,
-               color: stage.visualEffect.color
+               color: stage.visualEffect.color,
+               fontSize: stage.visualEffect.fontSize,
+               speed: stage.visualEffect.speed,
+               customEmojis: stage.visualEffect.customEmojis // 누락된 커스텀 이모지 전달 추가
              });
              newLogs.push(glitchLog);
         }

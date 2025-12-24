@@ -1,5 +1,10 @@
-
 import { LogEntry, VisualEffectType, VisualEffectConfig } from "../types";
+
+/**
+ * [ VisualEffectService 사용 가이드 ]
+ * 
+ * 이 서비스는 시뮬레이션 중 발생하는 특수 연출(글리치, 공포 효과, 시스템 오류)을 생성합니다.
+ */
 
 /**
  * 글리치 로그 생성 함수의 파라미터 옵션
@@ -12,53 +17,39 @@ export interface VisualEffectOptions {
   /** 화면에 출력될 핵심 텍스트 메시지 */
   text: string;
   /** 
-   * 효과의 종류 (types.ts 정의 참조)
-  flood (텍스트 증식)
-  - 설명: 지정된 텍스트가 화면 전체를 뒤덮으며 빠르게 증식합니다.
-  - 특징: intensity에 따라 증식 속도와 양이 결정되며, 텍스트에 붉은색/파란색 잔상(text-shadow) 효과가 적용되어 정신 착란이나 시스템 폭주를 연출합니다.
-  error (경고 팝업)
-  - 설명: 화면 중앙에 붉은색 테두리의 HUD 스타일 경고창이 나타납니다.
-  - 특징: "WARNING", "ERR-404", "Access Denied" 같은 문구와 함께 위험 아이콘이 뜨며, 노이즈(Scanline) 필터와 함께 깜빡이는(Pulse) 애니메이션이 적용됩니다.
-  system_crash (블루스크린)
-  - 설명: 화면 전체가 파란색(Blue Screen of Death)으로 바뀌며 치명적인 오류를 알립니다.
-  - 특징: "FATAL_ERROR", 메모리 덤프 코드 등이 표시되며, 가장 강도가 높고 무거운 분위기의 시스템 붕괴를 연출할 때 사용됩니다.
-  emoji_swarm (이모지 군집)
-  - 설명: 기괴하거나 지정된 이모지들이 화면 전체(배경)에 무작위로 흩뿌려집니다.
-  - 특징: 이모지들이 회전하거나 크기가 제각각이며, 화면 가장자리가 어두워지는 비네트 효과와 함께 환각을 보는 듯한 느낌을 줍니다.
-  emojiPopUp (이모지 순차 팝업)
-  - 설명: 지정된 이모지들이 시간차를 두고 화면 곳곳에서 튀어나옵니다.
-  - 특징: (최근 수정됨) "눈을 뜨는" 듯한 애니메이션(세로로 길어졌다 가로로 찢어지며 등장)이 적용되어 있으며, 모든 이모지가 등장한 후 마지막에 동시에 서서히 사라집니다. 주로 "감시당하는 느낌"이나 "공포" 연출에 사용됩니다.
+   * 효과의 종류
    */
   type: VisualEffectType;
-  /** 
-   * 효과 지속 시간 (ms). 기본값: 2000ms
-   */
+  /** 효과 지속 시간 (ms). 기본값: 2000ms */
   duration?: number; 
   /**
    * 효과의 강도 (1 ~ 10).
-   * flood: 텍스트 증식 속도와 양
-   * error: 진동 세기 등
-   * 기본값: 5
    */
   intensity?: number;
   /** 
    * 텍스트 색상 (Tailwind CSS 클래스). 
-   * 예: 'text-red-500', 'text-green-400'
-   * 기본값: 'text-red-600' 
    */
   color?: string;
   /**
    * 텍스트 크기 (Tailwind CSS 클래스).
-   * 예: 'text-xl', 'text-4xl'
-   * 기본값: style에 따라 다름
    */
   fontSize?: string;
   /**
    * 텍스트 출력 간격 (ms).
-   * 값이 낮을수록 텍스트가 빠르게 증식합니다.
-   * 기본값: intensity에 따라 자동 계산
    */
   speed?: number;
+  /**
+   * emojiPopUp 및 emoji_swarm 효과에서 사용할 커스텀 이모지 배열.
+   */
+  customEmojis?: string[];
+  /**
+   * emojiPopUp에서 사용할 이모지의 최소 크기 (px)
+   */
+  minEmojiSize?: number;
+  /**
+   * emojiPopUp에서 사용할 이모지의 최대 크기 (px)
+   */
+  maxEmojiSize?: number;
 }
 
 /**
@@ -77,7 +68,10 @@ export function createVisualEffectLog(options: VisualEffectOptions): LogEntry {
     intensity = 5,
     color = 'text-red-600',
     fontSize,
-    speed
+    speed,
+    customEmojis,
+    minEmojiSize,
+    maxEmojiSize
   } = options;
 
   const effectConfig: VisualEffectConfig = {
@@ -86,7 +80,10 @@ export function createVisualEffectLog(options: VisualEffectOptions): LogEntry {
     intensity,
     color,
     fontSize,
-    speed
+    speed,
+    customEmojis,
+    minEmojiSize,
+    maxEmojiSize
   };
 
   return {
