@@ -41,7 +41,7 @@ export const DIMENSION_REGISTRY: DimensionLore[] = [
     title: '허물 벗는 그림자 (만화)',
     genre: '서바이벌 스릴러',
     type: '콘솔 오픈월드',
-    originNpcIds: ['sa_heon_staff'],
+    originNpcIds: ['sa_heok_staff'],
     description: '도시의 그늘에서 암살자들이 서로를 잡아먹으며 격을 높이는 피카레스크풍 서사 차원.'
   },
   {
