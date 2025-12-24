@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Character, LogEntry } from './types';
+import { Character, LogEntry, Mission } from './types';
 import CharacterCard from './components/CharacterCard';
 import LogViewer from './components/LogViewer';
 import CharacterForm, { RelationshipDraft } from './components/CharacterForm';
@@ -16,7 +16,7 @@ import ContentWarningModal from './components/ContentWarningModal';
 import AscensionOverlay from './components/AscensionOverlay'; 
 import LoreNotification from './components/LoreNotification';
 import { processTurn } from './services/simulationEngine';
-import { getVirtualDate, formatVirtualDate } from './dataBase/dateUtils';
+import { getVirtualDate, formatVirtualDate, getInitialSimulationDate } from './dataBase/dateUtils';
 import { db } from './dataBase/manager';
 import { createVisualEffectLog, VisualEffectOptions } from './dataBase/visualEffectService';
 import { getSyncRate, getStabilizationScore, DIMENSION_LORE } from './dataBase/storyService'; 
@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 
 const SAVE_KEY = 'dimension_corp_auto_save_v1';
+const MISSION_SAVE_KEY = 'dimension_corp_custom_missions_v1';
 
 const App: React.FC = () => {
   const [view, setView] = useState<'mission' | 'office' | 'store' | 'memorial' | 'archive'>('mission');
@@ -43,12 +44,15 @@ const App: React.FC = () => {
   const [showWarning, setShowWarning] = useState(true);
   const [isDevMode, setIsDevMode] = useState(false);
   const [speed, setSpeed] = useState(1000);
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(getInitialSimulationDate());
   
   const [manualSyncBonus, setManualSyncBonus] = useState(0);
   const [isAscensionDismissed, setIsAscensionDismissed] = useState(false);
   const [unlockedLoreTitles, setUnlockedLoreTitles] = useState<string[]>([]);
   const [notifiedLoreThresholds, setNotifiedLoreThresholds] = useState<Set<number>>(new Set());
+
+  // 커스텀 미션 상태
+  const [customMissions, setCustomMissions] = useState<Mission[]>([]);
 
   // 시각 효과 재생 중 여부 (재생 중일 때 시뮬레이션 일시 정지)
   const [isEffectActive, setIsEffectActive] = useState(false);
@@ -83,8 +87,25 @@ const App: React.FC = () => {
   const simFileInputRef = useRef<HTMLInputElement>(null);
   const agentFileInputRef = useRef<HTMLInputElement>(null);
 
+  // Load Saved Data
   useEffect(() => {
     const rawData = localStorage.getItem(SAVE_KEY);
+    const missionData = localStorage.getItem(MISSION_SAVE_KEY);
+
+    // 1. 커스텀 미션 로드 및 등록
+    if (missionData) {
+      try {
+        const parsedMissions = JSON.parse(missionData);
+        if (Array.isArray(parsedMissions)) {
+          setCustomMissions(parsedMissions);
+          parsedMissions.forEach(m => db.registerCustomMission(m));
+        }
+      } catch (e) {
+        console.error("Custom mission load failed", e);
+      }
+    }
+
+    // 2. 시뮬레이션 상태 로드
     if (rawData) {
       try {
         const parsed = JSON.parse(rawData);
@@ -125,6 +146,7 @@ const App: React.FC = () => {
     }
   }, []);
 
+  // Save Simulation Data
   useEffect(() => {
     const saveData = {
       characters,
@@ -138,6 +160,11 @@ const App: React.FC = () => {
     localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
   }, [characters, credits, inventory, logs, manualSyncBonus, currentDate]);
 
+  // Save Custom Missions
+  useEffect(() => {
+    localStorage.setItem(MISSION_SAVE_KEY, JSON.stringify(customMissions));
+  }, [customMissions]);
+
   const executeTurn = useCallback(() => {
     if (characters.length === 0) return;
 
@@ -150,7 +177,7 @@ const App: React.FC = () => {
     setCharacters(prevChars => {
       if (prevChars.length === 0) return prevChars;
       
-      const { updatedCharacters, newLogs } = processTurn(prevChars);
+      const { updatedCharacters, newLogs } = processTurn(prevChars, totalScore);
 
       const prevTotalFixed = prevChars.reduce((sum, c) => sum + c.anomaliesFixed, 0);
       const newTotalFixed = updatedCharacters.reduce((sum, c) => sum + c.anomaliesFixed, 0);
@@ -180,7 +207,7 @@ const App: React.FC = () => {
       
       return updatedCharacters;
     });
-  }, [characters]);
+  }, [characters, totalScore]);
 
   useEffect(() => {
     let interval: number | undefined;
@@ -267,6 +294,7 @@ const App: React.FC = () => {
     setIsAscensionDismissed(false);
     
     localStorage.removeItem(SAVE_KEY);
+    localStorage.removeItem(MISSION_SAVE_KEY); // 커스텀 미션도 초기화
 
     setCharacters([]);
     setCredits(0);
@@ -274,7 +302,9 @@ const App: React.FC = () => {
     setManualSyncBonus(0);
     setNotifiedLoreThresholds(new Set());
     setUnlockedLoreTitles([]);
-    setCurrentDate(new Date());
+    setCustomMissions([]); // 상태 초기화
+    db.resetMissions(); // DB 초기화
+    setCurrentDate(getInitialSimulationDate());
     setView('mission');
     setSpeed(1000);
     setIsDevMode(false);
@@ -348,6 +378,7 @@ const App: React.FC = () => {
       inventory,
       logs,
       manualSyncBonus,
+      customMissions, // 커스텀 미션도 함께 저장
       currentDate: currentDate.getTime(),
       timestamp: Date.now()
     };
@@ -371,6 +402,12 @@ const App: React.FC = () => {
           setManualSyncBonus(parsed.manualSyncBonus || 0);
           setIsAscensionDismissed(false);
           
+          // 커스텀 미션 로드
+          if (parsed.customMissions && Array.isArray(parsed.customMissions)) {
+            setCustomMissions(parsed.customMissions);
+            parsed.customMissions.forEach((m: any) => db.registerCustomMission(m));
+          }
+
           const currentScore = getStabilizationScore(parsed.characters, parsed.logs || [], parsed.manualSyncBonus || 0);
           const restoredSet = new Set<number>();
           DIMENSION_LORE.forEach(lore => {
@@ -446,10 +483,34 @@ const App: React.FC = () => {
     e.target.value = ''; 
   };
 
+  // 커스텀 미션 저장 핸들러
+  const handleSaveCustomMission = (mission: Mission) => {
+    // 1. 상태 업데이트 (로컬 스토리지 저장을 위해)
+    setCustomMissions(prev => {
+      const idx = prev.findIndex(m => m.id === mission.id);
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = mission;
+        return updated;
+      }
+      return [...prev, mission];
+    });
+
+    // 2. DB 등록 (시뮬레이션 엔진이 알 수 있도록)
+    db.registerCustomMission(mission);
+
+    setLogs(prev => [...prev, {
+      id: 'custom-mission-' + Date.now(),
+      timestamp: Date.now(),
+      type: 'system',
+      message: `시스템 확장: 커스텀 미션 "${mission.title}"이(가) 등록되었습니다.`
+    }]);
+  };
+
   const MobileNavItem = ({ targetView, icon: Icon, label }: { targetView: typeof view, icon: any, label: string }) => (
     <button 
       onClick={() => setView(targetView)} 
-      className={`flex flex-col items-center justify-center p-2 w-full transition-colors ${view === targetView ? 'text-amber-500' : 'text-neutral-500 hover:text-amber-200/70'}`}
+      className={`flex flex-col items-center justify-center p-2 w-full transition-colors active:scale-90 ${view === targetView ? 'text-amber-500' : 'text-neutral-500 hover:text-amber-200/70'}`}
     >
       <Icon size={20} className={view === targetView ? 'mb-1 scale-110' : 'mb-1'} />
       <span className="text-[9px] font-bold uppercase tracking-wider">{label}</span>
@@ -531,7 +592,7 @@ const App: React.FC = () => {
         <main className="flex-1 max-w-7xl mx-auto w-full p-2 md:p-6 overflow-hidden mb-[60px] md:mb-0">
           {view === 'mission' ? (
             <div className="h-full flex flex-col lg:grid lg:grid-cols-12 gap-4 md:gap-6 overflow-hidden">
-              <div className="flex-1 lg:h-full lg:col-span-8 overflow-y-auto pr-0 md:pr-2 min-h-0 custom-scrollbar">
+              <div className="flex-1 lg:h-full lg:col-span-8 overflow-y-auto pr-0 md:pr-2 min-h-0 custom-scrollbar pb-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-10">
                   {characters.length === 0 ? (
                     <div className="col-span-full h-full flex flex-col items-center justify-center text-neutral-600 space-y-4 py-20">
@@ -552,7 +613,8 @@ const App: React.FC = () => {
                   )}
                 </div>
               </div>
-              <div className="h-[30vh] md:h-[35vh] lg:h-full lg:col-span-4 shrink-0 min-h-0 overflow-hidden">
+              {/* Mobile: Log height reduced to 25vh for better visibility of characters. Desktop: Full height */}
+              <div className="h-[25vh] md:h-[35vh] lg:h-full lg:col-span-4 shrink-0 min-h-0 overflow-hidden">
                 <LogViewer logs={logs} onEffectStateChange={setIsEffectActive} />
               </div>
             </div>
@@ -592,7 +654,7 @@ const App: React.FC = () => {
           </div>
         </footer>
 
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-neutral-950/95 backdrop-blur-lg border-t border-amber-900/30 z-50 flex justify-around pb-safe">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-neutral-950/95 backdrop-blur-lg border-t border-amber-900/30 z-[60] flex justify-around pb-safe">
           <MobileNavItem targetView="mission" icon={Monitor} label="제어실" />
           <MobileNavItem targetView="office" icon={Coffee} label="사무실" />
           <MobileNavItem targetView="store" icon={ShoppingCart} label="상점" />
@@ -622,6 +684,8 @@ const App: React.FC = () => {
             onTriggerEffect={handleTriggerVisualEffect}
             manualSyncBonus={manualSyncBonus}
             onAdjustManualBonus={setManualSyncBonus}
+            customMissions={customMissions}
+            onSaveCustomMission={handleSaveCustomMission}
           />
         )}
 

@@ -92,13 +92,13 @@ export const STORE_ITEMS: StoreItem[] = [
     targetNpcId: 'park_taewoo_staff'
   },
   {
-    id: 'gift_sa_heon',
+    id: 'gift_sa_heok',
     name: '보온 기능용 넥워머',
-    description: '변온동물인 이사현에게 꼭 필요한 아이템입니다. 그의 목을 따뜻하게 감싸주어 팀장님께 더 기어오르게 합니다.',
+    description: '변온동물인 백사혁에게 꼭 필요한 아이템입니다. 그의 목을 따뜻하게 감싸주어 팀장님께 더 기어오르게 합니다.',
     price: 5,
     effect: 'gift',
     icon: '🧣',
-    targetNpcId: 'sa_heon_staff'
+    targetNpcId: 'sa_heok_staff'
   },
   {
     id: 'gift_han_kyubin',

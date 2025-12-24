@@ -86,7 +86,7 @@ const Store: React.FC<Props> = ({ characters, setCharacters, credits, setCredits
         </div>
         
         {/* Responsive List: Row on mobile (scroll), Col on desktop */}
-        <div className="flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto p-2 space-x-2 md:space-x-0 md:space-y-2 no-scrollbar">
+        <div className="flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto p-2 space-x-2 md:space-x-0 md:space-y-2 no-scrollbar custom-scrollbar">
           {characters.map(c => (
             <button
               key={c.id}
@@ -138,9 +138,9 @@ const Store: React.FC<Props> = ({ characters, setCharacters, credits, setCredits
         </div>
 
         {/* Items Grid */}
-        <div className="flex-1 p-4 md:p-8 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 p-4 md:p-8 overflow-y-auto custom-scrollbar pb-20 md:pb-0">
            <h3 className="text-[11px] md:text-[13px] text-purple-400 uppercase tracking-widest font-bold mb-4 md:mb-6 flex items-center gap-2"><ShoppingBag size={16} /> 심해 카탈로그</h3>
-           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 pb-20 md:pb-0">
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
               {items.map(item => (
                 <div key={item.id} className="bg-neutral-900/60 border border-purple-900/30 p-4 md:p-6 rounded-xl flex flex-col justify-between hover:border-purple-500/50 transition-all">
                   <div className="flex justify-between items-start mb-4">
@@ -160,10 +160,10 @@ const Store: React.FC<Props> = ({ characters, setCharacters, credits, setCredits
            </div>
         </div>
 
-        {/* Body Part Selector Modal */}
+        {/* Body Part Selector Modal - Bottom Sheet style on Mobile */}
         {showBodySelector && selectedChar && pendingItem && (
-          <div className="absolute inset-0 bg-black/90 z-20 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-neutral-900 border border-purple-500/50 rounded-lg shadow-[0_0_30px_rgba(168,85,247,0.2)] max-w-md w-full max-h-[80vh] flex flex-col">
+          <div className="absolute inset-0 bg-black/90 z-20 flex items-center md:justify-center justify-end flex-col p-0 md:p-4 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-neutral-900 border-t md:border border-purple-500/50 rounded-t-xl md:rounded-lg shadow-[0_0_30px_rgba(168,85,247,0.2)] w-full max-w-md max-h-[80vh] flex flex-col animate-in slide-in-from-bottom-full duration-300">
               <div className="flex justify-between items-center p-4 border-b border-purple-900/30">
                 <h3 className="text-purple-400 font-bold uppercase tracking-wider flex items-center gap-2">
                   <Activity size={18} /> 생체 재구성 부위 선택

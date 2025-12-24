@@ -5,6 +5,8 @@ import { vhs_tape_reactions } from "../missions/vhs_tape/reactions";
 import { wonder_park_reactions } from "../missions/wonder_park/reactions";
 import { abyss_morality_reactions } from "../missions/abyss_morality/reactions";
 import { pixel_harvest_reactions } from "../missions/pixel_harvest/reactions";
+import { redacted_rules_reactions } from "../missions/redacted_rules/reactions";
+import { void_signal_reactions } from "../missions/void_signal/reactions";
 
 /**
  * [ 미션 스테이지별 반응 데이터 타입 ]
@@ -18,5 +20,7 @@ export const MISSION_REACTIONS: Record<string, MissionStageReactions> = {
   "mission_vhs_tape": vhs_tape_reactions,
   "mission_wonder_park": wonder_park_reactions,
   "mission_abyss_morality": abyss_morality_reactions,
-  "mission_pixel_harvest": pixel_harvest_reactions
+  "mission_pixel_harvest": pixel_harvest_reactions,
+  "mission_redacted_rules": redacted_rules_reactions,
+  "mission_void_signal": void_signal_reactions
 };

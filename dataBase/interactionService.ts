@@ -1,6 +1,7 @@
 
 import { Character } from "../types";
 import { NPC } from "./seeds/npcs";
+import { NPC_META_DIALOGUES } from "./seeds/metaScripts";
 
 export interface InteractionResult {
   message: string;
@@ -41,11 +42,27 @@ function getRandom<T>(arr: T[]): T {
 export function generateInteractionResponse(
   char: Character, 
   npc: NPC, 
-  actionType: 'talk' | 'report' | 'gift'
+  actionType: 'talk' | 'report' | 'gift',
+  currentScore: number = 0
 ): InteractionResult {
   const affinity = char.npcAffinities[npc.id] || 0;
   let baseChange = 0;
   let message = "";
+
+  // [META LOGIC] 서사 안정화 지수가 매우 높을 경우 (800점 이상) 확률적으로 메타 발언 출력
+  if (currentScore > 800 && actionType === 'talk' && Math.random() < 0.3) {
+    const commonMeta = NPC_META_DIALOGUES["common"];
+    const specificMeta = NPC_META_DIALOGUES[npc.id];
+    
+    // 전용 대사가 있으면 우선 사용, 없으면 공통 대사
+    const pool = specificMeta || commonMeta;
+    const metaMsg = getRandom(pool);
+    
+    return {
+      message: `${npc.name}: "${metaMsg}"`,
+      affinityChange: 0 // 메타 발언은 호감도에 영향을 주지 않음
+    };
+  }
 
   // --- 토스터 & 잼 로직 ---
   if (npc.id === 'toaster_leader' || npc.id === 'jam_playful') {
@@ -98,8 +115,8 @@ export function generateInteractionResponse(
     return { message, affinityChange: baseChange };
   }
 
-  // --- 3. 사원 이사현 (T3) ---
-  if (npc.id === 'sa_heon_staff') {
+  // --- 3. 사원 백사혁 (T3) ---
+  if (npc.id === 'sa_heok_staff') {
     if (actionType === 'talk') {
       baseChange = Math.random() > 0.4 ? 5 : -1;
       if (affinity > 50) {
@@ -148,15 +165,15 @@ export function generateInteractionResponse(
   if (npc.id === 'baek_leader') {
     if (actionType === 'talk') {
       baseChange = Math.random() > 0.4 ? 3 : -1;
-      if (affinity > 50) message = `${npc.name}: "어이, ${char.name}. 사현이 녀석이 또 이상한 소리 안 하더냐? 녀석이 자꾸 뒤를 밟아서 털이 다 쭈뼛거리는군. 쯧."`;
+      if (affinity > 50) message = `${npc.name}: "어이, ${char.name}. 사혁이 녀석이 또 이상한 소리 안 하더냐? 녀석이 자꾸 뒤를 밟아서 털이 다 쭈뼛거리는군. 쯧."`;
       else if (affinity < -20) message = `${npc.name}: "가까이 오지 마라. 피 비린내가 역하군. 정신 똑바로 차려."`;
-      else message = `${npc.name}: "무슨 일이지? 사현이 녀석이 또 사고 쳤나? 할 말이 없으면 훈련장으로 꺼져라."`;
+      else message = `${npc.name}: "무슨 일이지? 사혁이 녀석이 또 사고 쳤나? 할 말이 없으면 훈련장으로 꺼져라."`;
     } else if (actionType === 'report') {
       baseChange = char.anomaliesFixed > 0 ? 6 : 0;
       message = char.anomaliesFixed > 0 ? `${npc.name}: "오... 이 정도면 무리에서 제 역할을 다했군. 이 기록은 잊지 않겠다. 잘했다."` : `${npc.name}: "이딴 게 보고서냐? 현장의 먼지라도 긁어오란 말이다. 다시 나가!"`;
     } else if (actionType === 'gift') {
       baseChange = 12;
-      message = `${npc.name}: "육포라... (우득) 음, 간이 잘 됐군. 고맙다. (사현이가 보면 또 뺏으려 들겠군)"`;
+      message = `${npc.name}: "육포라... (우득) 음, 간이 잘 됐군. 고맙다. (사혁이가 보면 또 뺏으려 들겠군)"`;
     }
     return { message, affinityChange: baseChange };
   }

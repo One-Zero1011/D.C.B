@@ -7,7 +7,7 @@ import { LEE_JUN_SCRIPTS } from "./chat_source/npcs/lee_jun";
 import { CHOI_SCRIPTS } from "./chat_source/npcs/choi";
 import { PARK_TAEWOO_SCRIPTS } from "./chat_source/npcs/park_taewoo";
 import { BAEK_SCRIPTS } from "./chat_source/npcs/baek";
-import { SA_HEON_SCRIPTS } from "./chat_source/npcs/sa_heon";
+import { SA_HEOK_SCRIPTS } from "./chat_source/npcs/sa_heok";
 import { TOASTER_JAM_SCRIPTS } from "./chat_source/npcs/toaster_jam";
 import { HAN_KYUBIN_SCRIPTS } from "./chat_source/npcs/han_kyubin";
 
@@ -28,7 +28,7 @@ export const CHAT_SCRIPTS: ChatScript[] = [
   ...CHOI_SCRIPTS,
   ...PARK_TAEWOO_SCRIPTS,
   ...BAEK_SCRIPTS,
-  ...SA_HEON_SCRIPTS,
+  ...SA_HEOK_SCRIPTS,
   ...TOASTER_JAM_SCRIPTS,
   ...HAN_KYUBIN_SCRIPTS
 ];

@@ -47,6 +47,7 @@ export interface MissionChoice {
     credits?: number;
     sanity?: number;
     hp?: number;
+    destroyPart?: keyof Body; // 특정 부위 파괴 (추가됨)
   };
 }
 

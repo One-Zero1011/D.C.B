@@ -25,18 +25,18 @@ export const NPC_RELATIONSHIPS: RelationshipInfo[] = [
     description: "차갑고 완벽한 팀장님이 당황해서 얼굴을 붉힐 때까지 깐족거리는 것이 삶의 목표. 하지만 그녀가 진짜 위기에 처하면 가장 먼저 꼬리를 세우고 달려간다."
   },
 
-  // --- 제3팀: 우두머리와 그림자 ---
+  // --- 제3팀: 야수와 조련사 ---
   {
     subjectId: 'baek_leader',
-    targetId: 'sa_heon_staff',
-    relationType: '길들여지지 않는 시선',
-    description: "이사현의 유능함은 인정하나, 자신의 등 뒤에서 느껴지는 지나치게 길고 정적인 시선에 종종 뒷목이 서늘해진다. 본능적으로 그가 위험하다는 걸 알면서도 유일하게 등을 맡긴다."
+    targetId: 'sa_heok_staff',
+    relationType: '잔소리꾼 부관',
+    description: "백사혁의 유능함은 인정하나, 시도 때도 없이 따라다니며 영수증 처리와 위생 상태를 지적하는 통에 골치가 아프다. 하지만 그가 없으면 팀이 멈춘다는 것을 안다."
   },
   {
-    subjectId: 'sa_heon_staff',
+    subjectId: 'sa_heok_staff',
     targetId: 'baek_leader',
-    relationType: '나의 유일한 좌표 / 그림자',
-    description: "백도진의 야성을 사랑한다. 그가 자신을 거칠게 다룰 때마다 안도감을 느끼며, 언젠가 그가 완전히 지쳤을 때 자신의 똬리 안에서만 숨 쉬게 만들 날을 고대한다."
+    relationType: '관리해야 할 맹수',
+    description: "백도진의 압도적인 무력은 존경하지만, 그의 행정 처리 능력과 위생 관념은 경멸한다. 자신이 완벽하게 보좌하여 그를 최고의 리더로 완성시키고자 한다."
   },
 
   // --- 제4팀: 완벽한 정비와 노이즈 (한규빈 중심) ---
@@ -73,9 +73,9 @@ export const NPC_RELATIONSHIPS: RelationshipInfo[] = [
     description: "전장에서 뼈가 굵은 두 남자의 묵직한 유대감. 많은 말을 하지 않아도 서로의 흉터가 어떤 서사에서 왔는지 본능적으로 알아챈다."
   },
   {
-    subjectId: 'sa_heon_staff',
+    subjectId: 'sa_heok_staff',
     targetId: 'lee_jun_staff',
-    relationType: '천적 (뱀 vs 강아지)',
-    description: "이준이 멍멍거리며 백 팀장에게 달려들 때마다 사현의 눈동자가 가늘어진다. 이준은 본능적으로 사현 옆에선 꼬리를 내리지만, 곧 다시 깝치며 그의 인내심을 테스트한다."
+    relationType: '소음 공해 (질서 vs 혼돈)',
+    description: "이준의 시끄러운 언행과 돌발 행동을 극도로 혐오한다. 이준을 볼 때마다 '어떻게 저런 비효율적인 존재가 살아있지?'라고 생각하며 무시하려 든다."
   }
 ];

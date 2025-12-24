@@ -11,10 +11,21 @@ export interface VirtualDate {
 
 const WEEK_DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
+// 시뮬레이션 고정 시작 날짜: 2024년 9월 1일 (가상 연도 3024년)
+const FIXED_START_DATE = new Date(2024, 8, 1); 
+
+/**
+ * 시뮬레이션의 초기화 날짜를 반환합니다.
+ */
+export function getInitialSimulationDate(): Date {
+  return new Date(FIXED_START_DATE);
+}
+
 /**
  * 실제 Date 객체를 가상 차원 날짜로 변환합니다.
+ * date 인자가 없으면 고정된 시작 날짜를 사용합니다.
  */
-export function getVirtualDate(date: Date = new Date()): VirtualDate {
+export function getVirtualDate(date: Date = getInitialSimulationDate()): VirtualDate {
   return {
     year: date.getFullYear() + YEAR_OFFSET,
     month: date.getMonth() + 1,

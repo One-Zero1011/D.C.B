@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { X, ChevronLeft, ChevronRight, Info } from 'lucide-react';
 import { db } from '../dataBase/manager';
-import { YEAR_OFFSET, VIRTUAL_ERA } from '../dataBase/dateUtils';
+import { YEAR_OFFSET, VIRTUAL_ERA, getInitialSimulationDate, getVirtualDate } from '../dataBase/dateUtils';
 import { getEventsForMonth } from '../dataBase/calendarService';
 import { CalendarEvent } from '../types';
 
@@ -11,11 +11,12 @@ interface Props {
 }
 
 const CalendarModal: React.FC<Props> = ({ onClose }) => {
-  const now = new Date();
-  const virtualNowYear = now.getFullYear() + YEAR_OFFSET;
+  // 실제 날짜 대신 가상 시작 날짜를 기준으로 초기 달력 설정
+  const start = getInitialSimulationDate();
+  const virtualStartYear = start.getFullYear() + YEAR_OFFSET;
 
   // 현재 달력을 보여줄 기준 날짜 (가상 연도 기준)
-  const [currentDate, setCurrentDate] = useState(new Date(virtualNowYear, now.getMonth(), now.getDate()));
+  const [currentDate, setCurrentDate] = useState(new Date(virtualStartYear, start.getMonth(), start.getDate()));
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
   const year = currentDate.getFullYear();
@@ -66,7 +67,10 @@ const CalendarModal: React.FC<Props> = ({ onClose }) => {
           <div className="grid grid-cols-7 gap-1">
             {paddingDays.map(i => <div key={`pad-${i}`} className="h-10" />)}
             {days.map(day => {
-              const isToday = virtualNowYear === year && now.getMonth() === month && now.getDate() === day;
+              // "오늘" 표시 로직: 가상 시작일과 일치하는 날짜
+              // (실제 시뮬레이션의 '오늘'을 연동하려면 props로 받아야 하지만, 
+              // 여기서는 캘린더 기본 뷰를 시작 날짜로 고정)
+              const isToday = virtualStartYear === year && start.getMonth() === month && start.getDate() === day;
               const dayEvents = eventsInMonth.filter(e => e.day === day);
               
               return (

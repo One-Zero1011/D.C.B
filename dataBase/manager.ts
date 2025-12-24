@@ -37,6 +37,28 @@ class DatabaseManager {
     this.missions = [...INITIAL_MISSIONS];
   }
 
+  // --- Mission Management ---
+  
+  /**
+   * 커스텀 미션을 데이터베이스에 등록합니다.
+   * 중복된 ID가 있다면 덮어씁니다.
+   */
+  registerCustomMission(mission: Mission) {
+    const existingIndex = this.missions.findIndex(m => m.id === mission.id);
+    if (existingIndex !== -1) {
+      this.missions[existingIndex] = mission;
+    } else {
+      this.missions.push(mission);
+    }
+  }
+
+  /**
+   * 등록된 모든 커스텀 미션을 제거하고 초기 미션만 남깁니다.
+   */
+  resetMissions() {
+    this.missions = [...INITIAL_MISSIONS];
+  }
+
   // --- Core Character Actions ---
   
   createInitialCharacter(data: {

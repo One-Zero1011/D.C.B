@@ -6,10 +6,13 @@ import { Character, StoreItem } from '../types';
 import { 
   Cpu, Angry, Smile, MessageSquare, ClipboardCheck, Gift, 
   UserCircle, ChevronDown, ChevronRight, Sparkles, FileText, X, Package,
-  Lock, Unlock, EyeOff, ShieldAlert, Terminal, Users2, Info, MessageCircle
+  Lock, Unlock, EyeOff, ShieldAlert, Terminal, Users2, Info, MessageCircle, HeartHandshake, Globe
 } from 'lucide-react';
 import { NPC } from '../dataBase/seeds/npcs';
 import GroupChatWidget from './GroupChatWidget';
+import { getStabilizationScore } from '../dataBase/storyService';
+import { NPC_RELATIONSHIPS } from '../dataBase/npc/relationships';
+import { DIMENSION_REGISTRY } from '../dataBase/seeds/dimensions';
 
 interface Props {
   characters: Character[];
@@ -28,8 +31,14 @@ const NPCInteraction: React.FC<Props> = ({ characters, inventory, setInventory, 
   const [isAnimating, setIsAnimating] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   
+  // 모바일 전용 탭 상태 ('chat' | 'list')
+  const [mobileTab, setMobileTab] = useState<'chat' | 'list'>('chat');
+
   // 채팅 채널 상태 관리 ('general' 또는 팀 이름)
   const [activeChatChannel, setActiveChatChannel] = useState<string>('general');
+
+  // 서사 안정화 지수 계산
+  const estimatedTotalScore = getStabilizationScore(characters, [], 0);
 
   // 팀별 그룹화 및 접힘 상태 관리
   const npcsByTeam = useMemo(() => {
@@ -71,8 +80,10 @@ const NPCInteraction: React.FC<Props> = ({ characters, inventory, setInventory, 
     appearance: 0,
     profile: 20,
     background: 40,
+    relationships: 50, // 관계도 해금
     personality: 60,
     visibleSide: 70,
+    dimension: 80, // 차원 기원 해금
     hiddenSide: 85,
     preference: 90,
     special: 100
@@ -103,7 +114,7 @@ const NPCInteraction: React.FC<Props> = ({ characters, inventory, setInventory, 
         }));
     }
 
-    const { message, affinityChange } = generateInteractionResponse(selectedChar, selectedNpc, type);
+    const { message, affinityChange } = generateInteractionResponse(selectedChar, selectedNpc, type, estimatedTotalScore);
     const finalAffinityChange = type === 'gift' ? affinityChange + 5 : affinityChange;
     const updatedChar = db.adjustNpcAffinity(selectedChar, selectedNpcId, finalAffinityChange);
     
@@ -122,23 +133,24 @@ const NPCInteraction: React.FC<Props> = ({ characters, inventory, setInventory, 
 
   const getColorStyles = (color: string) => {
     switch (color) {
-      case 'blue': return { text: 'text-blue-500', bg: 'bg-blue-500', border: 'border-blue-500/30', bgLight: 'bg-blue-500/10' };
-      case 'rose': return { text: 'text-rose-500', bg: 'bg-rose-500', border: 'border-rose-500/30', bgLight: 'bg-rose-500/10' };
-      case 'emerald': return { text: 'text-emerald-500', bg: 'bg-emerald-500', border: 'border-emerald-500/30', bgLight: 'bg-emerald-500/10' };
-      default: return { text: 'text-amber-500', bg: 'bg-amber-500', border: 'border-amber-500/30', bgLight: 'bg-amber-500/10' };
+      case 'blue': return { text: 'text-blue-500', bg: 'bg-blue-500', border: 'border-blue-500/30', bgLight: 'bg-blue-500/10', bar: 'bg-blue-500' };
+      case 'rose': return { text: 'text-rose-500', bg: 'bg-rose-500', border: 'border-rose-500/30', bgLight: 'bg-rose-500/10', bar: 'bg-rose-500' };
+      case 'emerald': return { text: 'text-emerald-500', bg: 'bg-emerald-500', border: 'border-emerald-500/30', bgLight: 'bg-emerald-500/10', bar: 'bg-emerald-500' };
+      default: return { text: 'text-amber-500', bg: 'bg-amber-500', border: 'border-amber-500/30', bgLight: 'bg-amber-500/10', bar: 'bg-amber-500' };
     }
   };
 
   const styles = getColorStyles(selectedNpc.themeColor);
 
-  const ProfileSection = ({ title, data, threshold }: { title: string, data: Record<string, string>, threshold: number }) => {
+  // Components for Profile Sections
+  const ProfileSection = ({ title, data, threshold, icon }: { title: string, data: Record<string, string>, threshold: number, icon?: React.ReactNode }) => {
     const isUnlocked = currentAffinity >= threshold;
 
     return (
       <div className={`mb-4 p-4 rounded-sm border transition-all duration-500 relative overflow-hidden ${isUnlocked ? 'bg-white/5 border-white/10' : 'bg-black/40 border-white/5 grayscale opacity-50'}`}>
         <div className="flex justify-between items-center mb-3 border-b border-white/10 pb-2">
           <h4 className={`text-[11px] font-bold uppercase tracking-widest flex items-center gap-2 ${isUnlocked ? styles.text : 'text-neutral-600'}`}>
-            {isUnlocked ? <Unlock size={12} /> : <Lock size={12} />}
+            {isUnlocked ? (icon || <Unlock size={12} />) : <Lock size={12} />}
             {title}
           </h4>
           {!isUnlocked && (
@@ -167,82 +179,204 @@ const NPCInteraction: React.FC<Props> = ({ characters, inventory, setInventory, 
     );
   };
 
+  const RelationshipSection = () => {
+    const threshold = THRESHOLDS.relationships;
+    const isUnlocked = currentAffinity >= threshold;
+    const relationships = NPC_RELATIONSHIPS.filter(r => r.subjectId === selectedNpc.id);
+
+    if (relationships.length === 0) return null;
+
+    return (
+      <div className={`mb-4 p-4 rounded-sm border transition-all duration-500 relative overflow-hidden ${isUnlocked ? 'bg-white/5 border-white/10' : 'bg-black/40 border-white/5 grayscale opacity-50'}`}>
+        <div className="flex justify-between items-center mb-3 border-b border-white/10 pb-2">
+          <h4 className={`text-[11px] font-bold uppercase tracking-widest flex items-center gap-2 ${isUnlocked ? styles.text : 'text-neutral-600'}`}>
+            {isUnlocked ? <HeartHandshake size={12} /> : <Lock size={12} />}
+            Internal Evaluation (Relationships)
+          </h4>
+          {!isUnlocked && <span className="text-[9px] font-mono text-red-900 animate-pulse bg-red-950/30 px-1.5 py-0.5 rounded">REQ: LV.{threshold}</span>}
+        </div>
+
+        {isUnlocked ? (
+          <div className="grid grid-cols-1 gap-4">
+            {relationships.map((rel, idx) => {
+              const target = allNpcs.find(n => n.id === rel.targetId);
+              if (!target) return null;
+              const targetStyle = getColorStyles(target.themeColor);
+              return (
+                <div key={idx} className="flex flex-col pl-3 border-l-2 border-white/10 hover:border-white/30 transition-colors">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-base">{target.avatar}</span>
+                    <span className={`text-[10px] font-bold uppercase ${targetStyle.text}`}>{target.name}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-neutral-900 text-neutral-400 border border-neutral-800">
+                      {rel.relationType}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-neutral-400 italic leading-snug">"{rel.description}"</p>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="py-2 text-center text-[10px] text-red-900/60 uppercase tracking-tighter italic">
+            Social Network Data Encrypted.
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const DimensionSection = () => {
+    const threshold = THRESHOLDS.dimension;
+    const isUnlocked = currentAffinity >= threshold;
+    const lore = DIMENSION_REGISTRY.find(d => d.originNpcIds.includes(selectedNpc.id));
+
+    if (!lore) return null;
+
+    return (
+      <div className={`mb-4 p-4 rounded-sm border transition-all duration-500 relative overflow-hidden ${isUnlocked ? 'bg-indigo-950/10 border-indigo-500/20' : 'bg-black/40 border-white/5 grayscale opacity-50'}`}>
+        <div className="flex justify-between items-center mb-3 border-b border-white/10 pb-2">
+          <h4 className={`text-[11px] font-bold uppercase tracking-widest flex items-center gap-2 ${isUnlocked ? 'text-indigo-400' : 'text-neutral-600'}`}>
+            {isUnlocked ? <Globe size={12} /> : <Lock size={12} />}
+            Original Dimension Data
+          </h4>
+          {!isUnlocked && <span className="text-[9px] font-mono text-red-900 animate-pulse bg-red-950/30 px-1.5 py-0.5 rounded">REQ: LV.{threshold}</span>}
+        </div>
+
+        {isUnlocked ? (
+          <div className="space-y-3">
+            <div className="flex justify-between items-start">
+              <span className="text-lg font-serif text-indigo-200 font-bold">{lore.title}</span>
+              <span className="text-[9px] bg-indigo-900/50 text-indigo-300 px-2 py-1 rounded border border-indigo-500/30">{lore.genre} / {lore.type}</span>
+            </div>
+            <p className="text-xs text-neutral-300 leading-relaxed font-light">{lore.description}</p>
+            <div className="text-[9px] text-neutral-500 font-mono mt-2 pt-2 border-t border-indigo-500/10">
+              ORIGIN_ID: {lore.id}
+            </div>
+          </div>
+        ) : (
+          <div className="py-2 text-center text-[10px] text-red-900/60 uppercase tracking-tighter italic">
+            Dimension Coordinates Encrypted.
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col md:flex-row h-full bg-neutral-900/60 border border-amber-900/30 rounded-lg overflow-hidden font-mono shadow-2xl relative">
-      {/* Sidebar: Group Chat & NPC List */}
-      <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-amber-900/20 bg-black/40 flex flex-col shrink-0 overflow-hidden">
-        {/* Group Chat Widget at Top */}
-        <GroupChatWidget 
-          selectedChar={selectedChar} 
-          allNpcs={allNpcs} 
-          activeChannel={activeChatChannel} 
-          onSwitchChannel={setActiveChatChannel}
-        />
-
-        <div className="p-2 border-b border-amber-900/20 shrink-0 bg-neutral-900/30 mt-1">
-          <h3 className="text-[10px] text-amber-500/60 uppercase tracking-widest font-bold flex items-center gap-2 px-2">
-            <Users2 size={12} /> 부서별 지휘관 목록
-          </h3>
-        </div>
+      {/* Sidebar (Desktop) / Tabbed Top Section (Mobile) */}
+      <div className={`w-full md:w-72 border-b md:border-b-0 md:border-r border-amber-900/20 bg-black/40 flex flex-col shrink-0 transition-all duration-300 
+        ${mobileTab === 'chat' ? 'h-[320px]' : 'h-[45vh]'} md:h-full overflow-hidden`}>
         
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2">
-          {Object.entries(npcsByTeam).map(([teamName, npcs]) => (
-            <div key={teamName} className="space-y-1">
-              <div className="w-full flex items-center justify-between p-2 text-[10px] font-bold uppercase tracking-wider text-amber-500/40 hover:bg-white/5 transition-all rounded group/header">
-                <button 
-                  onClick={() => toggleTeam(teamName)}
-                  className="flex items-center gap-2 flex-1 hover:text-amber-500 transition-colors text-left"
-                >
-                  {expandedTeams.has(teamName) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                  {teamName}
-                </button>
-                
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setActiveChatChannel(teamName);
-                    }}
-                    className={`p-1 rounded transition-all flex items-center justify-center 
-                      ${activeChatChannel === teamName 
-                        ? 'text-amber-500 bg-amber-500/20 shadow-[0_0_5px_rgba(245,158,11,0.5)]' 
-                        : 'text-neutral-600 hover:text-amber-400 hover:bg-neutral-800'}`}
-                    title={`${teamName} 채팅 채널 입장`}
+        {/* Mobile Tab Navigation */}
+        <div className="flex md:hidden border-b border-amber-900/30 shrink-0">
+          <button 
+            onClick={() => setMobileTab('chat')}
+            className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2
+              ${mobileTab === 'chat' ? 'bg-amber-900/20 text-amber-500 border-b-2 border-amber-500' : 'text-neutral-500 hover:text-neutral-300 bg-neutral-900/50'}`}
+          >
+            <MessageSquare size={14} /> 보안 채널
+          </button>
+          <button 
+            onClick={() => setMobileTab('list')}
+            className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-2
+              ${mobileTab === 'list' ? 'bg-amber-900/20 text-amber-500 border-b-2 border-amber-500' : 'text-neutral-500 hover:text-neutral-300 bg-neutral-900/50'}`}
+          >
+            <Users2 size={14} /> 지휘관 명부
+          </button>
+        </div>
+
+        {/* Content Wrapper */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden md:overflow-visible">
+          
+          {/* Group Chat Widget: Visible on Desktop OR Mobile Chat Tab */}
+          <div className={`${mobileTab === 'chat' ? 'flex' : 'hidden'} md:flex flex-col shrink-0 h-full md:h-auto overflow-hidden`}>
+            <GroupChatWidget 
+              selectedChar={selectedChar} 
+              allNpcs={allNpcs} 
+              activeChannel={activeChatChannel} 
+              onSwitchChannel={setActiveChatChannel}
+              totalScore={estimatedTotalScore}
+            />
+          </div>
+
+          {/* NPC List Header (Desktop Only) */}
+          <div className="hidden md:flex p-2 border-b border-amber-900/20 shrink-0 bg-neutral-900/30 mt-1">
+            <h3 className="text-[10px] text-amber-500/60 uppercase tracking-widest font-bold flex items-center gap-2 px-2">
+              <Users2 size={12} /> 부서별 지휘관 목록
+            </h3>
+          </div>
+          
+          {/* NPC List: Visible on Desktop OR Mobile List Tab */}
+          <div className={`${mobileTab === 'list' ? 'flex' : 'hidden'} md:flex flex-col flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2`}>
+            {Object.entries(npcsByTeam).map(([teamName, npcs]) => (
+              <div key={teamName} className="space-y-1">
+                {/* Team Header */}
+                <div className="w-full flex items-center justify-between p-2 text-[10px] font-bold uppercase tracking-wider text-amber-500/40 hover:bg-white/5 transition-all rounded group/header border border-transparent hover:border-amber-500/20">
+                  <button 
+                    onClick={() => toggleTeam(teamName)}
+                    className="flex items-center gap-2 flex-1 hover:text-amber-500 transition-colors text-left py-1"
                   >
-                    <MessageCircle size={12} fill={activeChatChannel === teamName ? "currentColor" : "none"} />
+                    {expandedTeams.has(teamName) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                    {teamName}
                   </button>
-                  <span className="bg-amber-900/20 px-1.5 py-0.5 rounded text-[9px] text-neutral-500 min-w-[20px] text-center">{npcs.length}</span>
+                  
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveChatChannel(teamName);
+                        // On mobile, switch to chat tab automatically when entering a channel
+                        if (window.innerWidth < 768) setMobileTab('chat');
+                      }}
+                      className={`p-1.5 rounded transition-all flex items-center justify-center 
+                        ${activeChatChannel === teamName 
+                          ? 'text-amber-500 bg-amber-500/20 shadow-[0_0_5px_rgba(245,158,11,0.5)]' 
+                          : 'text-neutral-600 hover:text-amber-400 hover:bg-neutral-800'}`}
+                      title={`${teamName} 채팅 채널 입장`}
+                    >
+                      <MessageCircle size={14} fill={activeChatChannel === teamName ? "currentColor" : "none"} />
+                    </button>
+                    <span className="bg-amber-900/20 px-1.5 py-0.5 rounded text-[9px] text-neutral-500 min-w-[20px] text-center">{npcs.length}</span>
+                  </div>
                 </div>
+                
+                {/* NPC Items */}
+                {expandedTeams.has(teamName) && (
+                  <div className="space-y-1 pl-1 animate-in slide-in-from-top-1 duration-200">
+                    {npcs.map(npc => {
+                      const isSelected = selectedNpcId === npc.id;
+                      const npcStyle = getColorStyles(npc.themeColor);
+                      return (
+                        <button 
+                          key={npc.id} 
+                          onClick={() => { setSelectedNpcId(npc.id); setShowProfile(false); }} 
+                          className={`w-full flex items-center gap-3 p-3 rounded-md transition-all text-left group border relative overflow-hidden
+                            ${isSelected ? `${npcStyle.bgLight} ${npcStyle.border} shadow-[inset_0_0_10px_rgba(0,0,0,0.2)]` : 'bg-neutral-900/20 hover:bg-white/5 border-transparent'}`}
+                        >
+                          <span className="text-2xl transition-transform group-hover:scale-110 shrink-0">{npc.avatar}</span>
+                          <div className="flex-1 min-w-0 flex flex-col justify-center">
+                            <div className={`text-xs md:text-[12px] mb-0.5 ${isSelected ? 'text-white font-bold' : 'text-neutral-400 group-hover:text-neutral-200'}`}>
+                              {npc.name}
+                            </div>
+                            <div className={`text-[10px] md:text-[8px] uppercase ${isSelected ? npcStyle.text : 'text-neutral-600'} whitespace-normal leading-tight break-words`}>
+                              {npc.role}
+                            </div>
+                          </div>
+                          {isSelected && <div className={`absolute left-0 top-0 bottom-0 w-1 ${npcStyle.bar}`} />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-              
-              {expandedTeams.has(teamName) && (
-                <div className="space-y-1 pl-1 animate-in slide-in-from-top-1 duration-200">
-                  {npcs.map(npc => {
-                    const isSelected = selectedNpcId === npc.id;
-                    const npcStyle = getColorStyles(npc.themeColor);
-                    return (
-                      <button 
-                        key={npc.id} 
-                        onClick={() => { setSelectedNpcId(npc.id); setShowProfile(false); }} 
-                        className={`w-full flex items-center gap-3 p-2 rounded transition-all text-left group ${isSelected ? `${npcStyle.bgLight} ${npcStyle.border}` : 'hover:bg-white/5 border border-transparent'}`}
-                      >
-                        <span className={`text-xl transition-transform group-hover:scale-110 ${isSelected ? 'scale-110' : ''}`}>{npc.avatar}</span>
-                        <div className="flex-1 overflow-hidden">
-                          <div className={`text-[12px] ${isSelected ? 'text-white font-bold' : 'text-neutral-400 group-hover:text-neutral-200'}`}>{npc.name}</div>
-                          <div className={`text-[8px] uppercase truncate ${isSelected ? npcStyle.text : 'text-neutral-600'}`}>{npc.role}</div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Main Area */}
-      <div className="flex-1 flex flex-col min-w-0 relative overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 relative overflow-hidden border-t md:border-t-0 border-amber-900/20">
         {/* Header: Agent Selector */}
         <div className="p-4 border-b border-amber-900/20 bg-black/40 flex flex-col md:flex-row items-start md:items-center justify-between shrink-0 gap-3 md:gap-0 z-10 relative">
           <div className="flex items-center gap-3 w-full md:w-auto">
@@ -264,11 +398,11 @@ const NPCInteraction: React.FC<Props> = ({ characters, inventory, setInventory, 
              <div className="flex items-center gap-2">
                 <div className="w-32 h-1.5 bg-neutral-800 rounded-full overflow-hidden border border-neutral-700">
                     <div 
-                    className={`h-full transition-all duration-1000 ${currentAffinity >= 0 ? 'bg-blue-500' : 'bg-red-500'}`} 
+                    className={`h-full transition-all duration-1000 ${currentAffinity >= 0 ? styles.bar : 'bg-red-500'}`} 
                     style={{ width: `${Math.abs(currentAffinity)}%` }}
                     />
                 </div>
-                <span className={`text-xs font-bold ${currentAffinity >= 0 ? 'text-blue-400' : 'text-red-400'}`}>{currentAffinity}</span>
+                <span className={`text-xs font-bold ${currentAffinity >= 0 ? styles.text : 'text-red-400'}`}>{currentAffinity}</span>
              </div>
           </div>
         </div>
@@ -294,16 +428,16 @@ const NPCInteraction: React.FC<Props> = ({ characters, inventory, setInventory, 
                 </div>
 
                 {/* Scrollable Data Area */}
-                <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
-                   <div className="max-w-3xl mx-auto space-y-6 pb-12">
-                     <div className="bg-amber-500/5 border border-amber-500/20 p-3 rounded flex items-start gap-3">
-                        <Info size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar pb-20 md:pb-8">
+                   <div className="max-w-3xl mx-auto space-y-6">
+                     <div className={`bg-${selectedNpc.themeColor}-500/5 border border-${selectedNpc.themeColor}-500/20 p-3 rounded flex items-start gap-3`}>
+                        <Info size={16} className={`${styles.text} shrink-0 mt-0.5`} />
                         <div className="flex flex-col gap-1">
                           <p className="text-[11px] text-neutral-300 leading-tight">
-                            본 데이터는 <span className="text-amber-500 font-bold">보안 등급(호감도)</span>에 따라 자동 복호화됩니다.
+                            본 데이터는 <span className={`${styles.text} font-bold`}>보안 등급(호감도)</span>에 따라 자동 복호화됩니다.
                           </p>
                           <div className="h-1 w-full bg-neutral-800 rounded-full overflow-hidden mt-1">
-                            <div className="h-full bg-amber-500/50 transition-all duration-1000" style={{ width: `${Math.min(100, Math.max(0, currentAffinity))}%` }} />
+                            <div className={`h-full ${styles.bg} opacity-50 transition-all duration-1000`} style={{ width: `${Math.min(100, Math.max(0, currentAffinity))}%` }} />
                           </div>
                         </div>
                      </div>
@@ -311,19 +445,24 @@ const NPCInteraction: React.FC<Props> = ({ characters, inventory, setInventory, 
                      <ProfileSection title="Physical Appearance" data={selectedNpc.appearance as any} threshold={THRESHOLDS.appearance} />
                      <ProfileSection title="Basic Profile" data={selectedNpc.profile as any} threshold={THRESHOLDS.profile} />
                      <ProfileSection title="Background & History" data={selectedNpc.background as any} threshold={THRESHOLDS.background} />
+                     
+                     {/* New Sections */}
+                     <RelationshipSection />
+                     <DimensionSection />
+
                      <ProfileSection title="Personality & Archetype" data={selectedNpc.personalityDetail as any} threshold={THRESHOLDS.personality} />
                      <ProfileSection title="Operational Routine" data={selectedNpc.visibleSide as any} threshold={THRESHOLDS.visibleSide} />
                      <ProfileSection title="Classified: Hidden Side" data={selectedNpc.hiddenSide as any} threshold={THRESHOLDS.hiddenSide} />
                      <ProfileSection title="Preferences & Obsessions" data={selectedNpc.preference as any} threshold={THRESHOLDS.preference} />
                      
-                     <div className={`mt-6 p-6 border transition-all duration-500 rounded-sm relative overflow-hidden ${currentAffinity >= THRESHOLDS.special ? 'bg-amber-500/10 border-amber-500/40' : 'bg-black/40 border-white/5 opacity-60 grayscale'}`}>
-                        <h4 className="text-xs font-bold text-amber-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                     <div className={`mt-6 p-6 border transition-all duration-500 rounded-sm relative overflow-hidden ${currentAffinity >= THRESHOLDS.special ? `${styles.bgLight} ${styles.border}` : 'bg-black/40 border-white/5 opacity-60 grayscale'}`}>
+                        <h4 className={`text-xs font-bold ${styles.text} uppercase tracking-widest mb-3 flex items-center gap-2`}>
                           {currentAffinity >= THRESHOLDS.special ? <Sparkles size={14} /> : <Lock size={14} />}
                           Special Ability (Level 100)
                         </h4>
                         {currentAffinity >= THRESHOLDS.special ? (
                           <div className="relative z-10">
-                            <p className="text-sm text-amber-100 font-serif leading-relaxed italic border-l-2 border-amber-500 pl-4 py-1">
+                            <p className={`text-sm text-amber-100 font-serif leading-relaxed italic border-l-2 ${styles.border.replace('/30', '')} pl-4 py-1`}>
                               "{selectedNpc.special}"
                             </p>
                           </div>
@@ -342,7 +481,7 @@ const NPCInteraction: React.FC<Props> = ({ characters, inventory, setInventory, 
                 </div>
              </div>
            ) : (
-             <div className="flex flex-col items-center justify-center h-full p-4 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-y-auto custom-scrollbar">
+             <div className="flex flex-col items-center justify-center h-full p-4 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-y-auto custom-scrollbar pb-20 md:pb-8">
                 <div className="w-full max-w-xl flex flex-col items-center space-y-8">
                   {/* NPC Hero Section */}
                   <div className="flex flex-col items-center text-center">

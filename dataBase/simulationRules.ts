@@ -54,6 +54,17 @@ export function applyPhysicalDamage(char: Character, damage: number): { char: Ch
   const newChar = { ...char, body: { ...char.body } };
   const logs: string[] = [];
   
+  // [Overkill Logic] 데미지가 최대 체력 이상(치명적 수치)일 경우, 부위 상관없이 즉사 처리
+  if (damage >= char.maxHp) {
+    newChar.status = '사망';
+    // 시각적으로 사망임을 명확히 하기 위해 주요 급소 파괴
+    newChar.body.head.current = 0;
+    newChar.body.neck.current = 0;
+    newChar.body.torso.current = 0;
+    logs.push(`[FATAL] ${damage}의 압도적인 충격(Overkill)이 ${char.name}의 육체를 완전히 파괴했습니다. 생명 반응 소실.`);
+    return { char: newChar, logs };
+  }
+
   const parts: (keyof Body)[] = [
     'head', 'neck', 'torso', 
     'leftArm', 'rightArm', 

@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Character } from '../types';
 import { NPC } from '../dataBase/npc/types';
 import { CHAT_SCRIPTS, CHAT_CONVERSATIONS, ChatConversation } from '../dataBase/seeds/chatScripts';
+import { META_CHAT_MESSAGES, NPC_SPECIFIC_META_CHAT } from '../dataBase/seeds/metaScripts';
 import { MessageSquare, User, Hash, ArrowLeft } from 'lucide-react';
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
   allNpcs: NPC[];
   activeChannel: string; // 'general' or Team Name
   onSwitchChannel: (channel: string) => void;
+  totalScore?: number; // 서사 안정화 지수
 }
 
 interface ChatMessage {
@@ -24,7 +26,7 @@ interface ChatMessage {
   themeColor: string;
 }
 
-const GroupChatWidget: React.FC<Props> = ({ selectedChar, allNpcs, activeChannel, onSwitchChannel }) => {
+const GroupChatWidget: React.FC<Props> = ({ selectedChar, allNpcs, activeChannel, onSwitchChannel, totalScore = 0 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isChannelChanging, setIsChannelChanging] = useState(false);
@@ -62,22 +64,80 @@ const GroupChatWidget: React.FC<Props> = ({ selectedChar, allNpcs, activeChannel
     }, 3500); 
 
     return () => clearInterval(interval);
-  }, [selectedChar, activeChannel, isChannelChanging, isPlayingConversation, typingInfo]);
+  }, [selectedChar, activeChannel, isChannelChanging, isPlayingConversation, typingInfo, totalScore]);
 
-  // 스크롤 자동 이동 (메시지 추가되거나 타이핑 상태 변할 때)
+  // 스크롤 자동 이동
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, typingInfo]);
 
-  // 이벤트 트리거 (단일 메시지 vs 대화 세트)
+  // 이벤트 트리거
   const triggerRandomEvent = (isInitial = false) => {
+    // 1. Meta Event Check (서사 안정화 지수가 100점 이상일 때)
+    if (!isInitial && totalScore > 100 && Math.random() < 0.25) {
+       addMetaMessage();
+       return;
+    }
+
+    // 2. Normal Conversation Check
     if (!isInitial && Math.random() < 0.4) {
       startConversation();
     } else {
       addSingleRandomMessage();
     }
+  };
+
+  // 메타 메시지 추가
+  const addMetaMessage = async () => {
+    // 현재 채널에 있는 NPC 중 한 명 선택
+    let targetNpcs = allNpcs;
+    if (activeChannel !== 'general') {
+      targetNpcs = allNpcs.filter(npc => npc.team === activeChannel);
+    }
+    if (targetNpcs.length === 0) return;
+    const randomNpc = targetNpcs[Math.floor(Math.random() * targetNpcs.length)];
+
+    // 1. NPC 고유 메타 메시지 확인
+    let selectedText = "";
+    const specificScripts = NPC_SPECIFIC_META_CHAT[randomNpc.id];
+    
+    if (specificScripts) {
+      const validSpecific = specificScripts.find(m => totalScore >= m.minScore && totalScore <= m.maxScore);
+      if (validSpecific && validSpecific.messages.length > 0) {
+        selectedText = validSpecific.messages[Math.floor(Math.random() * validSpecific.messages.length)];
+      }
+    }
+
+    // 2. 고유 메시지가 없으면 공용 메시지 사용
+    if (!selectedText) {
+      const validMeta = META_CHAT_MESSAGES.find(m => totalScore >= m.minScore && totalScore <= m.maxScore);
+      if (validMeta) {
+        selectedText = validMeta.messages[Math.floor(Math.random() * validMeta.messages.length)];
+      }
+    }
+
+    if (!selectedText) return; // 메시지 없음
+
+    setTypingInfo({ name: randomNpc.name, avatar: randomNpc.avatar });
+    await new Promise(resolve => setTimeout(resolve, 800));
+    setTypingInfo(null);
+
+    if (activeChannelRef.current !== activeChannel) return;
+
+    const newMessage: ChatMessage = {
+      id: Math.random().toString(36).substr(2, 9),
+      npcId: randomNpc.id,
+      npcName: randomNpc.name,
+      npcAvatar: randomNpc.avatar,
+      text: selectedText,
+      timestamp: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+      affinityLevel: 2, // 일반 메시지처럼 보이게 함
+      themeColor: randomNpc.themeColor // NPC 고유 색상 사용
+    };
+
+    setMessages(prev => [...prev, newMessage].slice(-30));
   };
 
   // 단일 메시지 추가
@@ -204,6 +264,7 @@ const GroupChatWidget: React.FC<Props> = ({ selectedChar, allNpcs, activeChannel
   };
 
   const getMessageStyle = (level: number, color: string) => {
+    // red 컬러에 대한 특수 스타일 제거 및 일반 로직 통합
     if (level === 3) return `border-l-2 border-${color}-500 bg-${color}-500/10 text-${color}-200 font-medium`;
     else if (level === 2) return `text-neutral-300`;
     return `text-neutral-500 opacity-80`;
@@ -214,7 +275,7 @@ const GroupChatWidget: React.FC<Props> = ({ selectedChar, allNpcs, activeChannel
     : allNpcs.filter(n => n.team === activeChannel).length;
 
   return (
-    <div className="flex flex-col bg-black/60 border-b border-amber-900/30 h-64 shrink-0 overflow-hidden relative group transition-all">
+    <div className="flex flex-col bg-black/60 border-b border-amber-900/30 h-full w-full overflow-hidden relative group transition-all">
       {/* Header */}
       <div className={`flex items-center justify-between px-3 py-2 border-b backdrop-blur-sm z-10 transition-colors duration-500
         ${activeChannel === 'general' ? 'bg-neutral-900/80 border-white/5' : 'bg-amber-900/20 border-amber-500/20'}`}>
@@ -269,7 +330,7 @@ const GroupChatWidget: React.FC<Props> = ({ selectedChar, allNpcs, activeChannel
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2 mb-0.5">
-                    <span className={`text-[10px] font-bold truncate ${msg.affinityLevel === 3 ? 'text-amber-500' : 'text-neutral-400'}`}>
+                    <span className={`text-[10px] font-bold truncate ${msg.themeColor === 'red' ? 'text-red-500' : msg.affinityLevel === 3 ? 'text-amber-500' : 'text-neutral-400'}`}>
                       {msg.npcName}
                     </span>
                     <span className="text-[8px] text-neutral-700 font-mono">{msg.timestamp}</span>

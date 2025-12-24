@@ -5,6 +5,8 @@ import { mission_vhs_tape } from "../missions/vhs_tape/index";
 import { mission_wonder_park } from "../missions/wonder_park/index";
 import { mission_abyss_morality } from "../missions/abyss_morality/index";
 import { mission_pixel_harvest } from "../missions/pixel_harvest/index";
+import { mission_redacted_rules } from "../missions/redacted_rules/index";
+import { mission_void_signal } from "../missions/void_signal/index";
 
 /**
  * [ 미션 통합 관리 ]
@@ -15,5 +17,7 @@ export const INITIAL_MISSIONS: Mission[] = [
   mission_vhs_tape,
   mission_wonder_park,
   mission_abyss_morality,
-  mission_pixel_harvest
+  mission_pixel_harvest,
+  mission_redacted_rules,
+  mission_void_signal
 ];

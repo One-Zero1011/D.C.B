@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import { X, FileDown, FileUp, Users, Download, RotateCcw, Save, ShieldAlert, Database, HardDrive, Terminal, Play, CheckCircle2, ChevronRight, ChevronDown, CornerDownRight, Zap, SlidersHorizontal } from 'lucide-react';
+import { X, FileDown, FileUp, Users, Download, RotateCcw, Save, ShieldAlert, Database, HardDrive, Terminal, Play, CheckCircle2, ChevronRight, ChevronDown, CornerDownRight, Zap, SlidersHorizontal, Map } from 'lucide-react';
 import { db } from '../dataBase/manager';
 import { VisualEffectType, VisualEffectConfig } from '../types';
+import MissionBuilder from './MissionBuilder';
 
 interface Props {
   onClose: () => void;
@@ -17,6 +18,9 @@ interface Props {
   onTriggerEffect?: (options: { type: VisualEffectType; text: string; duration?: number; intensity?: number; customEmojis?: string[]; minEmojiSize?: number; maxEmojiSize?: number }) => void;
   manualSyncBonus?: number;
   onAdjustManualBonus?: (bonus: number) => void;
+  // Custom Missions Props
+  customMissions?: any[];
+  onSaveCustomMission?: (mission: any) => void;
 }
 
 const SettingsModal: React.FC<Props> = ({ 
@@ -31,10 +35,13 @@ const SettingsModal: React.FC<Props> = ({
   onForceMission,
   onTriggerEffect,
   manualSyncBonus = 0,
-  onAdjustManualBonus
+  onAdjustManualBonus,
+  customMissions = [],
+  onSaveCustomMission
 }) => {
   const missions = db.getMissions();
   const [expandedMissionId, setExpandedMissionId] = useState<string | null>(null);
+  const [showMissionBuilder, setShowMissionBuilder] = useState(false);
 
   // Visual Effect Tester State
   const [effectType, setEffectType] = useState<VisualEffectType>('error');
@@ -63,6 +70,18 @@ const SettingsModal: React.FC<Props> = ({
       });
     }
   };
+
+  if (showMissionBuilder) {
+    return (
+      <MissionBuilder 
+        onClose={() => setShowMissionBuilder(false)}
+        onSaveMission={(m) => {
+          if (onSaveCustomMission) onSaveCustomMission(m);
+        }}
+        existingMissions={customMissions}
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[100] backdrop-blur-sm p-0 md:p-4">
@@ -102,8 +121,32 @@ const SettingsModal: React.FC<Props> = ({
             </div>
           </div>
 
+          {/* Mission Builder Button */}
+          {onSaveCustomMission && (
+            <div className="space-y-4 pt-4 border-t border-amber-900/10">
+              <div className="flex items-center gap-2 text-purple-400/80 border-l-4 border-purple-500 pl-3">
+                <Map size={20} />
+                <h3 className="text-sm font-bold uppercase tracking-wider">커스텀 미션 설계</h3>
+              </div>
+              <div className="bg-black/30 p-4 border border-purple-900/20 rounded-sm">
+                <div className="flex justify-between items-center">
+                  <div className="text-[12px] text-neutral-400">
+                    <p>자신만의 미션을 직접 설계하고 파일로 공유할 수 있습니다.</p>
+                    <p className="text-[10px] text-neutral-500 mt-1">현재 등록된 커스텀 미션: <span className="text-purple-400 font-bold">{customMissions.length}</span>개</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowMissionBuilder(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-900/20 border border-purple-500/30 hover:bg-purple-900/40 hover:border-purple-500 text-purple-400 rounded-sm transition-all text-xs font-bold uppercase"
+                  >
+                    <Map size={14} /> Mission Builder 열기
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {onToggleDevMode && (
-             <div className="space-y-4">
+             <div className="space-y-4 pt-4 border-t border-amber-900/10">
                <div className="flex items-center gap-2 text-green-500/80 border-l-4 border-green-500 pl-3">
                  <Terminal size={20} />
                  <h3 className="text-sm font-bold uppercase tracking-wider">개발자 도구 (Developer Console)</h3>
@@ -190,7 +233,10 @@ const SettingsModal: React.FC<Props> = ({
                                      <div className="flex items-center justify-between p-2 hover:bg-green-500/10 transition-colors">
                                         <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => toggleMission(mission.id)}>
                                            <button className="text-neutral-500 hover:text-green-400">{expandedMissionId === mission.id ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</button>
-                                           <div className="flex flex-col"><span className="text-xs font-bold text-neutral-300">{mission.title}</span></div>
+                                           <div className="flex flex-col">
+                                             <span className="text-xs font-bold text-neutral-300">{mission.title}</span>
+                                             {mission.id.startsWith('custom_') && <span className="text-[9px] text-purple-400">CUSTOM</span>}
+                                           </div>
                                         </div>
                                         <button onClick={() => onForceMission(mission.id)} className="p-1.5 bg-green-900/20 hover:bg-green-600 hover:text-white text-green-500 rounded text-[10px] font-bold uppercase tracking-wider">Start</button>
                                      </div>
@@ -205,7 +251,7 @@ const SettingsModal: React.FC<Props> = ({
              </div>
           )}
 
-          <div className="space-y-4 pt-4">
+          <div className="space-y-4 pt-4 border-t border-amber-900/10">
             <div className="flex items-center gap-2 text-red-500/80 border-l-4 border-red-500 pl-3">
               <ShieldAlert size={20} />
               <h3 className="text-sm font-bold uppercase tracking-wider">긴급 초기화 프로토콜</h3>
