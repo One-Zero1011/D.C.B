@@ -25,6 +25,89 @@ export const STORE_ITEMS: StoreItem[] = [
     price: 10,
     effect: 'body',
     icon: '🔫'
+  },
+  // --- NPC 선물 아이템 (팀장급) ---
+  {
+    id: 'gift_kang',
+    name: '고급 에스프레소 원두',
+    description: '강 팀장이 선호하는 씁쓸한 원두입니다. 그녀의 연산 속도를 높여줄지도 모릅니다.',
+    price: 5,
+    effect: 'gift',
+    icon: '☕',
+    targetNpcId: 'kang_leader'
+  },
+  {
+    id: 'gift_choi',
+    name: '빈티지 위스키',
+    description: '최 팀장의 나른한 오후를 달래줄 독한 위스키입니다. 용사 시절의 향수가 담겨 있습니다.',
+    price: 6,
+    effect: 'gift',
+    icon: '🥃',
+    targetNpcId: 'choi_leader'
+  },
+  {
+    id: 'gift_baek',
+    name: '고단백 수제 육포',
+    description: '백 팀장이 훈련 후 즐겨 먹는 육포입니다. 야생의 풍미가 가득 담겨 있습니다.',
+    price: 5,
+    effect: 'gift',
+    icon: '🥩',
+    targetNpcId: 'baek_leader'
+  },
+  {
+    id: 'gift_toaster',
+    name: '홀로그램 스티커 팩',
+    description: '토스터의 케이스를 장식할 수 있는 한정판 스티커입니다. 매우 반짝입니다.',
+    price: 4,
+    effect: 'gift',
+    icon: '✨',
+    targetNpcId: 'toaster_leader'
+  },
+  {
+    id: 'gift_jam',
+    name: '딸기잼 사탕 팩',
+    description: '잼이 좋아하는 달콤하고 끈적한 사탕입니다. 그의 입을 즐겁게 해줄 수 있습니다.',
+    price: 4,
+    effect: 'gift',
+    icon: '🍬',
+    targetNpcId: 'jam_playful'
+  },
+  // --- 신규 사원 선물 아이템 ---
+  {
+    id: 'gift_leejun',
+    name: '무음 청축 키보드',
+    description: '사원 이준이 탐내는 정숙하고 타건감 좋은 키보드입니다. 서류 작업 속도가 비약적으로 상승할 것입니다.',
+    price: 4,
+    effect: 'gift',
+    icon: '⌨️',
+    targetNpcId: 'lee_jun_staff'
+  },
+  {
+    id: 'gift_parktaewoo',
+    name: '초고농축 카페인 알약',
+    description: '박태우 사원의 생명줄입니다. 한 알이면 최 팀장의 사고를 3건 더 수습할 기운이 생깁니다.',
+    price: 3,
+    effect: 'gift',
+    icon: '💊',
+    targetNpcId: 'park_taewoo_staff'
+  },
+  {
+    id: 'gift_sa_heon',
+    name: '보온 기능용 넥워머',
+    description: '변온동물인 이사현에게 꼭 필요한 아이템입니다. 그의 목을 따뜻하게 감싸주어 팀장님께 더 기어오르게 합니다.',
+    price: 5,
+    effect: 'gift',
+    icon: '🧣',
+    targetNpcId: 'sa_heon_staff'
+  },
+  {
+    id: 'gift_han_kyubin',
+    name: '나노 정밀 오일 스프레이',
+    description: '한규빈이 아끼는 정밀 기계들을 닦기 위한 최고급 윤활제입니다. 사용 시 기분 좋은 금속 광택이 납니다.',
+    price: 4,
+    effect: 'gift',
+    icon: '🧴',
+    targetNpcId: 'han_kyubin_staff'
   }
 ];
 

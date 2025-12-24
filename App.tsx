@@ -7,17 +7,19 @@ import CharacterForm, { RelationshipDraft } from './components/CharacterForm';
 import CalendarModal from './components/CalendarModal';
 import SettingsModal from './components/SettingsModal';
 import SystemResetModal from './components/SystemResetModal';
+import DeleteAgentModal from './components/DeleteAgentModal';
 import NPCInteraction from './components/NPCInteraction';
 import Store from './components/Store';
 import MemorialSpace from './components/MemorialSpace';
 import ArchiveRoom from './components/ArchiveRoom';
 import ContentWarningModal from './components/ContentWarningModal';
 import AscensionOverlay from './components/AscensionOverlay'; 
+import LoreNotification from './components/LoreNotification';
 import { processTurn } from './services/simulationEngine';
 import { getVirtualDate, formatVirtualDate } from './dataBase/dateUtils';
 import { db } from './dataBase/manager';
 import { createVisualEffectLog, VisualEffectOptions } from './dataBase/visualEffectService';
-import { getSyncRate } from './dataBase/storyService'; 
+import { getSyncRate, getStabilizationScore, DIMENSION_LORE } from './dataBase/storyService'; 
 import { 
   Play, Pause, Plus, FastForward, Monitor, Coffee, 
   ShoppingCart, Calendar as CalendarIcon, HeartHandshake, 
@@ -30,32 +32,57 @@ const App: React.FC = () => {
   const [view, setView] = useState<'mission' | 'office' | 'store' | 'memorial' | 'archive'>('mission');
   const [characters, setCharacters] = useState<Character[]>([]);
   const [credits, setCredits] = useState<number>(0);
+  const [inventory, setInventory] = useState<Record<string, number>>({});
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isSimulating, setIsSimulating] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false); 
+  const [agentToDelete, setAgentToDelete] = useState<Character | null>(null);
   const [showWarning, setShowWarning] = useState(true);
   const [isDevMode, setIsDevMode] = useState(false);
   const [speed, setSpeed] = useState(1000);
   const [currentDate, setCurrentDate] = useState(new Date());
   
-  // 수동 보정 점수 (개발자 도구용)
   const [manualSyncBonus, setManualSyncBonus] = useState(0);
-  
-  // 승천 연출 오버레이 노출 여부 관리
   const [isAscensionDismissed, setIsAscensionDismissed] = useState(false);
+  const [unlockedLoreTitles, setUnlockedLoreTitles] = useState<string[]>([]);
+  const [notifiedLoreThresholds, setNotifiedLoreThresholds] = useState<Set<number>>(new Set());
+
+  // 시각 효과 재생 중 여부 (재생 중일 때 시뮬레이션 일시 정지)
+  const [isEffectActive, setIsEffectActive] = useState(false);
   
-  // 3차원 승천 여부 체크 (수동 보너스 포함)
+  const totalScore = getStabilizationScore(characters, logs, manualSyncBonus);
   const isAscended = getSyncRate(characters, logs, manualSyncBonus) >= 100;
 
-  // 파일 입력을 위한 Refs
+  useEffect(() => {
+    const newUnlocks: string[] = [];
+    const newNotifiedSet = new Set(notifiedLoreThresholds);
+    let changed = false;
+
+    DIMENSION_LORE.forEach(lore => {
+      if (totalScore >= lore.syncThreshold && !newNotifiedSet.has(lore.syncThreshold)) {
+        newUnlocks.push(lore.title);
+        newNotifiedSet.add(lore.syncThreshold);
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      setNotifiedLoreThresholds(newNotifiedSet);
+      setUnlockedLoreTitles(prev => [...prev, ...newUnlocks]);
+    }
+  }, [totalScore, notifiedLoreThresholds]);
+
+  // 알림창 제거 함수 메모이제이션 (이 함수가 새로 생성되지 않아야 자식의 useEffect가 재발생하지 않음)
+  const handleCloseNotification = useCallback(() => {
+    setUnlockedLoreTitles(prev => prev.slice(1));
+  }, []);
+
   const simFileInputRef = useRef<HTMLInputElement>(null);
   const agentFileInputRef = useRef<HTMLInputElement>(null);
 
-  // --- Auto Save & Load Logic ---
-  
   useEffect(() => {
     const rawData = localStorage.getItem(SAVE_KEY);
     if (rawData) {
@@ -64,15 +91,22 @@ const App: React.FC = () => {
         if (parsed.characters && Array.isArray(parsed.characters)) {
           setCharacters(parsed.characters);
           setCredits(parsed.credits || 0);
+          setInventory(parsed.inventory || {});
           setLogs(parsed.logs || []);
           setManualSyncBonus(parsed.manualSyncBonus || 0);
-          // 저장된 데이터가 이미 승천 상태라면 연출을 건너뛰도록 설정할 수도 있으나,
-          // 여기서는 세션 내에서만 dismiss를 유지합니다.
+          
+          const restoredSet = new Set<number>();
+          const currentScore = getStabilizationScore(parsed.characters, parsed.logs || [], parsed.manualSyncBonus || 0);
+          DIMENSION_LORE.forEach(lore => {
+            if (currentScore >= lore.syncThreshold) restoredSet.add(lore.syncThreshold);
+          });
+          setNotifiedLoreThresholds(restoredSet);
+
           if (parsed.currentDate) {
             setCurrentDate(new Date(parsed.currentDate));
           }
           setLogs(prev => [...prev, {
-            id: 'auto-load',
+            id: 'auto-load-' + Date.now(),
             timestamp: Date.now(),
             type: 'system',
             message: '시스템 복구: 자동 저장된 세션을 로드했습니다.'
@@ -83,7 +117,7 @@ const App: React.FC = () => {
       }
     } else {
       setLogs([{
-        id: 'init',
+        id: 'init-' + Date.now(),
         timestamp: Date.now(),
         type: 'system',
         message: '본사 통합 관리 시스템 v4.0.3 로드 완료. 대기 중...'
@@ -95,15 +129,14 @@ const App: React.FC = () => {
     const saveData = {
       characters,
       credits,
+      inventory,
       logs,
       manualSyncBonus,
       currentDate: currentDate.getTime(),
       timestamp: Date.now()
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
-  }, [characters, credits, logs, manualSyncBonus, currentDate]);
-
-  // --- Simulation Engine ---
+  }, [characters, credits, inventory, logs, manualSyncBonus, currentDate]);
 
   const executeTurn = useCallback(() => {
     if (characters.length === 0) return;
@@ -138,7 +171,7 @@ const App: React.FC = () => {
       if (allDead) {
         setIsSimulating(false);
         setLogs(prev => [...prev, {
-          id: Math.random().toString(),
+          id: 'error-' + Date.now(),
           timestamp: Date.now(),
           type: 'system',
           message: '경고: 모든 요원 자산 소실. 현장 제어 권한 일시 중지.'
@@ -151,13 +184,12 @@ const App: React.FC = () => {
 
   useEffect(() => {
     let interval: number | undefined;
-    if (isSimulating && characters.length > 0 && !isAscended) {
+    // 시각 효과가 활성 상태일 때(isEffectActive)는 시뮬레이션을 일시 정지
+    if (isSimulating && characters.length > 0 && !isAscended && !isEffectActive) {
       interval = window.setInterval(executeTurn, speed);
     }
     return () => clearInterval(interval);
-  }, [isSimulating, characters, speed, executeTurn, isAscended]);
-
-  // --- Handlers ---
+  }, [isSimulating, characters, speed, executeTurn, isAscended, isEffectActive]);
 
   const handleAddCharacter = (newChar: Character, relationships: RelationshipDraft[]) => {
     setCharacters(prev => {
@@ -191,7 +223,7 @@ const App: React.FC = () => {
     });
 
     setLogs(prev => [...prev, {
-      id: Math.random().toString(),
+      id: 'add-' + Date.now(),
       timestamp: Date.now(),
       type: 'system',
       message: `요원 전이 승인: ${newChar.name} (${newChar.species}) - 작전 설계도에 배치됨.`
@@ -200,18 +232,27 @@ const App: React.FC = () => {
   };
 
   const handleUpdateCharacter = (updated: Character) => {
-    setCharacters(prev => prev.map(c => c.id === updated.id ? updated : c));
+    setCharacters(prev => prev.map(c => {
+      if (c.id === updated.id) return updated;
+      return c;
+    }));
   };
 
-  const handleDeleteCharacter = (id: string) => {
-    if (!confirm("정말로 이 요원을 영구 삭제하시겠습니까? 데이터는 복구할 수 없습니다.")) return;
-    
+  const handleDeleteRequest = (id: string) => {
+    const target = characters.find(c => c.id === id);
+    if (target) {
+      setAgentToDelete(target);
+    }
+  };
+
+  const executeDeleteAgent = (id: string) => {
     const target = characters.find(c => c.id === id);
     setCharacters(prev => prev.filter(c => c.id !== id));
+    setAgentToDelete(null);
     
     if (target) {
        setLogs(prev => [...prev, {
-          id: crypto.randomUUID(),
+          id: 'del-' + Date.now(),
           timestamp: Date.now(),
           type: 'system',
           message: `시스템 경고: 요원 ${target.name}의 데이터가 영구 말소되었습니다.`
@@ -219,31 +260,27 @@ const App: React.FC = () => {
     }
   };
 
-  const handleResetRequest = () => {
-    setShowResetConfirm(true);
-  };
-
   const executeSystemReset = () => {
     setIsSimulating(false);
     setShowSettings(false); 
     setShowResetConfirm(false);
-    setIsAscensionDismissed(false); // 리셋 시 승천 해제 상태도 초기화
+    setIsAscensionDismissed(false);
     
     localStorage.removeItem(SAVE_KEY);
 
     setCharacters([]);
     setCredits(0);
+    setInventory({});
     setManualSyncBonus(0);
+    setNotifiedLoreThresholds(new Set());
+    setUnlockedLoreTitles([]);
     setCurrentDate(new Date());
     setView('mission');
     setSpeed(1000);
     setIsDevMode(false);
     
-    let logId = 'reset-init';
-    try { logId = crypto.randomUUID(); } catch(e) {}
-
     setLogs([{
-      id: logId,
+      id: 'reset-' + Date.now(),
       timestamp: Date.now(),
       type: 'system',
       message: '시스템 리부트 완료. 데이터베이스가 초기화되었습니다. 요원을 호출하여 시뮬레이션을 시작하십시오.'
@@ -275,7 +312,7 @@ const App: React.FC = () => {
     }));
 
     setLogs(prev => [...prev, {
-      id: crypto.randomUUID(),
+      id: 'force-' + Date.now(),
       timestamp: Date.now(),
       type: 'system',
       message: `[DEV] 관리자 권한으로 임무 강제 시작: "${mission.title}" (Stage: ${targetStageId})`
@@ -308,18 +345,13 @@ const App: React.FC = () => {
       type: 'FULL_SIMULATION',
       characters,
       credits,
+      inventory,
       logs,
       manualSyncBonus,
       currentDate: currentDate.getTime(),
       timestamp: Date.now()
     };
     downloadFile(saveData, `DimensionCorp_Save_${new Date().toISOString().slice(0,10)}.json`);
-    setLogs(prev => [...prev, {
-      id: Math.random().toString(),
-      timestamp: Date.now(),
-      type: 'system',
-      message: '시스템 백업: 로컬 파일로 데이터 추출 완료.'
-    }]);
   };
 
   const handleLoadSimulationFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -331,51 +363,48 @@ const App: React.FC = () => {
       try {
         const parsed = JSON.parse(event.target?.result as string);
         if (parsed.type === 'FULL_SIMULATION' || (parsed.characters && parsed.logs)) {
-          if (!confirm('현재 시뮬레이션을 덮어쓰고 불러오시겠습니까?')) return;
-          
           setIsSimulating(false);
           setCharacters(parsed.characters || []);
           setCredits(parsed.credits || 0);
+          setInventory(parsed.inventory || {});
           setLogs(parsed.logs || []);
           setManualSyncBonus(parsed.manualSyncBonus || 0);
           setIsAscensionDismissed(false);
+          
+          const currentScore = getStabilizationScore(parsed.characters, parsed.logs || [], parsed.manualSyncBonus || 0);
+          const restoredSet = new Set<number>();
+          DIMENSION_LORE.forEach(lore => {
+            if (currentScore >= lore.syncThreshold) restoredSet.add(lore.syncThreshold);
+          });
+          setNotifiedLoreThresholds(restoredSet);
+          setUnlockedLoreTitles([]);
+
           if (parsed.currentDate) setCurrentDate(new Date(parsed.currentDate));
           setShowSettings(false); 
           
           setLogs(prev => [...prev, {
-            id: Math.random().toString(),
+            id: 'import-' + Date.now(),
             timestamp: Date.now(),
             type: 'system',
             message: '시스템 복원: 외부 파일에서 시뮬레이션 상태를 로드했습니다.'
           }]);
-        } else {
-          alert('올바르지 않은 시뮬레이션 저장 파일입니다.');
         }
       } catch (err) {
-        alert('파일을 읽는 중 오류가 발생했습니다.');
+        console.error("Load failed", err);
       }
     };
     reader.readAsText(file);
-    e.target.value = ''; // Reset input
+    e.target.value = ''; 
   };
 
   const handleExportAgents = () => {
-    if (characters.length === 0) {
-      alert("내보낼 요원이 없습니다.");
-      return;
-    }
+    if (characters.length === 0) return;
     const exportData = {
       version: '4.0.3',
       type: 'AGENT_ROSTER',
       agents: characters
     };
     downloadFile(exportData, `DimensionCorp_Agents_${new Date().toISOString().slice(0,10)}.json`);
-    setLogs(prev => [...prev, {
-      id: Math.random().toString(),
-      timestamp: Date.now(),
-      type: 'system',
-      message: `인력 송출: ${characters.length}명의 요원 데이터 암호화 및 추출 완료.`
-    }]);
   };
 
   const handleImportAgents = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -392,32 +421,29 @@ const App: React.FC = () => {
           newAgents = parsed.agents;
         } else if (Array.isArray(parsed)) {
           newAgents = parsed; 
-        } else {
-          alert('올바르지 않은 요원 명단 파일입니다.');
-          return;
         }
 
         const imported = newAgents.map(agent => ({
           ...agent,
-          id: crypto.randomUUID(),
+          id: Math.random().toString(36).substring(2, 9),
           name: `${agent.name} (전이됨)` 
         }));
 
         setCharacters(prev => [...prev, ...imported]);
         setShowSettings(false); 
         setLogs(prev => [...prev, {
-          id: Math.random().toString(),
+          id: 'agent-imp-' + Date.now(),
           timestamp: Date.now(),
           type: 'system',
           message: `인력 충원: 외부 차원에서 ${imported.length}명의 요원이 합류했습니다.`
         }]);
 
       } catch (err) {
-        alert('파일을 읽는 중 오류가 발생했습니다.');
+        console.error("Import failed", err);
       }
     };
     reader.readAsText(file);
-    e.target.value = ''; // Reset input
+    e.target.value = ''; 
   };
 
   const MobileNavItem = ({ targetView, icon: Icon, label }: { targetView: typeof view, icon: any, label: string }) => (
@@ -432,27 +458,19 @@ const App: React.FC = () => {
 
   return (
     <div className="h-[100dvh] bg-neutral-950 text-amber-100 font-sans selection:bg-amber-500/30 flex flex-col overflow-hidden relative">
-      <input 
-        type="file" 
-        ref={simFileInputRef} 
-        onChange={handleLoadSimulationFile} 
-        accept=".json" 
-        className="hidden" 
-      />
-      <input 
-        type="file" 
-        ref={agentFileInputRef} 
-        onChange={handleImportAgents} 
-        accept=".json" 
-        className="hidden" 
-      />
+      <input type="file" ref={simFileInputRef} onChange={handleLoadSimulationFile} accept=".json" className="hidden" />
+      <input type="file" ref={agentFileInputRef} onChange={handleImportAgents} accept=".json" className="hidden" />
 
-      {/* 최종 승천 연출 추가 - Dismiss 되지 않은 경우에만 표시 */}
-      {isAscended && !isAscensionDismissed && (
-        <AscensionOverlay 
-          onReset={executeSystemReset} 
-          onContinue={() => setIsAscensionDismissed(true)} 
+      {unlockedLoreTitles.length > 0 && (
+        <LoreNotification 
+          key={unlockedLoreTitles[0]}
+          title={unlockedLoreTitles[0]} 
+          onClose={handleCloseNotification} 
         />
+      )}
+
+      {isAscended && !isAscensionDismissed && (
+        <AscensionOverlay onReset={executeSystemReset} onContinue={() => setIsAscensionDismissed(true)} />
       )}
 
       {showWarning && (
@@ -471,11 +489,7 @@ const App: React.FC = () => {
                   <span className="text-[9px] text-amber-500/50 uppercase tracking-[0.2em] md:hidden">{formatVirtualDate(getVirtualDate(currentDate))}</span>
                 </div>
               </div>
-              
-              <button 
-                onClick={() => setShowCalendar(true)}
-                className="md:hidden p-2 text-amber-500/70 hover:text-amber-400"
-              >
+              <button onClick={() => setShowCalendar(true)} className="md:hidden p-2 text-amber-500/70 hover:text-amber-400">
                 <CalendarIcon size={20} />
               </button>
             </div>
@@ -493,14 +507,9 @@ const App: React.FC = () => {
                 {view === 'mission' && (
                   <>
                     <div className="flex items-center gap-2 bg-neutral-900 p-1 border border-neutral-800 rounded-lg">
-                      <button 
-                        onClick={() => setShowSettings(true)} 
-                        title="시스템 설정" 
-                        className="p-2 border-r border-neutral-800 text-amber-500/70 hover:text-amber-400 hover:bg-neutral-800"
-                      >
+                      <button onClick={() => setShowSettings(true)} title="시스템 설정" className="p-2 border-r border-neutral-800 text-amber-500/70 hover:text-amber-400 hover:bg-neutral-800">
                         <Settings size={18} />
                       </button>
-
                       <button onClick={() => setIsSimulating(!isSimulating)} disabled={characters.length === 0} className={`p-2 rounded hover:bg-neutral-800 ${isSimulating ? 'text-amber-400' : 'text-neutral-400'}`}>
                         {isSimulating ? <Pause size={18} /> : <Play size={18} />}
                       </button>
@@ -537,20 +546,22 @@ const App: React.FC = () => {
                         character={char} 
                         allCharacters={characters} 
                         onUpdate={handleUpdateCharacter}
-                        onDelete={handleDeleteCharacter} 
+                        onDelete={handleDeleteRequest} 
                       />
                     ))
                   )}
                 </div>
               </div>
-              <div className="h-[30vh] md:h-[35vh] lg:h-full lg:col-span-4 shrink-0 min-h-0 overflow-hidden"><LogViewer logs={logs} /></div>
+              <div className="h-[30vh] md:h-[35vh] lg:h-full lg:col-span-4 shrink-0 min-h-0 overflow-hidden">
+                <LogViewer logs={logs} onEffectStateChange={setIsEffectActive} />
+              </div>
             </div>
           ) : view === 'office' ? (
             <div className="h-full animate-in fade-in zoom-in-95 duration-500">
-              <NPCInteraction characters={characters} onUpdateCharacter={handleUpdateCharacter} />
+              <NPCInteraction characters={characters} inventory={inventory} setInventory={setInventory} onUpdateCharacter={handleUpdateCharacter} />
             </div>
           ) : view === 'store' ? (
-            <div className="h-full animate-in fade-in slide-in-from-bottom-4 duration-500"><Store characters={characters} setCharacters={setCharacters} credits={credits} setCredits={setCredits} /></div>
+            <div className="h-full animate-in fade-in slide-in-from-bottom-4 duration-500"><Store characters={characters} setCharacters={setCharacters} credits={credits} setCredits={setCredits} inventory={inventory} setInventory={setInventory} /></div>
           ) : view === 'memorial' ? (
             <div className="h-full animate-in fade-in slide-in-from-top-4 duration-500">
               <MemorialSpace characters={characters} />
@@ -568,13 +579,7 @@ const App: React.FC = () => {
               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
               <span className="text-neutral-500 uppercase tracking-widest">System Status: Connected</span>
             </div>
-            <div className="flex items-center gap-2 text-neutral-500">
-               <CloudLightning size={12} className="text-amber-500" />
-               <span className="text-[10px] uppercase">Auto-Save Active</span>
-            </div>
-            <div className="text-amber-500/80 tracking-widest font-bold">
-              {formatVirtualDate(getVirtualDate(currentDate))}
-            </div>
+            <div className="text-amber-500/80 tracking-widest font-bold">{formatVirtualDate(getVirtualDate(currentDate))}</div>
             {isDevMode && (
               <span className="text-green-500 font-bold uppercase tracking-widest bg-green-950/30 px-2 py-0.5 rounded border border-green-800">Dev Mode Active</span>
             )}
@@ -610,7 +615,7 @@ const App: React.FC = () => {
             onLoadSim={() => simFileInputRef.current?.click()}
             onExportAgents={handleExportAgents}
             onImportAgents={() => agentFileInputRef.current?.click()}
-            onReset={handleResetRequest}
+            onReset={() => setShowResetConfirm(true)}
             isDevMode={isDevMode}
             onToggleDevMode={() => setIsDevMode(!isDevMode)}
             onForceMission={handleForceStartMission}
@@ -621,9 +626,14 @@ const App: React.FC = () => {
         )}
 
         {showResetConfirm && (
-          <SystemResetModal 
-            onConfirm={executeSystemReset}
-            onClose={() => setShowResetConfirm(false)}
+          <SystemResetModal onConfirm={executeSystemReset} onClose={() => setShowResetConfirm(false)} />
+        )}
+
+        {agentToDelete && (
+          <DeleteAgentModal 
+            character={agentToDelete} 
+            onConfirm={executeDeleteAgent} 
+            onClose={() => setAgentToDelete(null)} 
           />
         )}
       </div>

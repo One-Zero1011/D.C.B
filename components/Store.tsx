@@ -2,16 +2,18 @@
 import React, { useState } from 'react';
 import { db } from '../dataBase/manager';
 import { Character, StoreItem, Body } from '../types';
-import { ShoppingBag, User, Coins, X, Activity, AlertTriangle, XCircle } from 'lucide-react';
+import { ShoppingBag, User, Coins, X, Activity, AlertTriangle, XCircle, Package } from 'lucide-react';
 
 interface Props {
   characters: Character[];
   setCharacters: React.Dispatch<React.SetStateAction<Character[]>>;
   credits: number;
   setCredits: React.Dispatch<React.SetStateAction<number>>;
+  inventory: Record<string, number>;
+  setInventory: React.Dispatch<React.SetStateAction<Record<string, number>>>;
 }
 
-const Store: React.FC<Props> = ({ characters, setCharacters, credits, setCredits }) => {
+const Store: React.FC<Props> = ({ characters, setCharacters, credits, setCredits, inventory, setInventory }) => {
   const items = db.getStoreItems();
   const owner = db.getStoreOwner();
   const [selectedCharId, setSelectedCharId] = useState<string>(characters.length > 0 ? characters[0].id : '');
@@ -24,7 +26,7 @@ const Store: React.FC<Props> = ({ characters, setCharacters, credits, setCredits
   const selectedChar = characters.find(c => c.id === selectedCharId);
 
   const handleBuyClick = (item: StoreItem) => {
-    if (!selectedCharId) {
+    if (item.effect !== 'gift' && !selectedCharId) {
       alert("치료할 요원을 선택하십시오.");
       return;
     }
@@ -36,9 +38,20 @@ const Store: React.FC<Props> = ({ characters, setCharacters, credits, setCredits
     if (item.effect === 'body') {
       setPendingItem(item);
       setShowBodySelector(true);
+    } else if (item.effect === 'gift') {
+      processGiftPurchase(item);
     } else {
       processTransaction(item);
     }
+  };
+
+  const processGiftPurchase = (item: StoreItem) => {
+    setCredits(prev => prev - item.price);
+    setInventory(prev => ({
+      ...prev,
+      [item.id]: (prev[item.id] || 0) + 1
+    }));
+    setDialogueIdx((prev) => (prev + 1) % owner.dialogues.length);
   };
 
   const processTransaction = (item: StoreItem, partKey?: keyof Body) => {
@@ -65,7 +78,7 @@ const Store: React.FC<Props> = ({ characters, setCharacters, credits, setCredits
 
   return (
     <div className="flex flex-col md:flex-row h-full bg-indigo-950/20 border border-purple-900/30 rounded-lg overflow-hidden font-mono shadow-2xl relative">
-      {/* Sidebar (Desktop) / Topbar (Mobile): Character List */}
+      {/* Sidebar (Desktop) / Topbar (Mobile): Character List & Inventory */}
       <div className="w-full md:w-72 border-b md:border-b-0 md:border-r border-purple-900/30 bg-black/40 flex flex-col shrink-0">
         <div className="p-3 md:p-4 border-b border-purple-900/30 flex justify-between items-center">
           <h3 className="text-[11px] md:text-[13px] text-purple-400 uppercase tracking-[0.2em] font-bold flex items-center gap-2"><User size={16} /> 대기 자산</h3>
@@ -86,6 +99,24 @@ const Store: React.FC<Props> = ({ characters, setCharacters, credits, setCredits
               </div>
             </button>
           ))}
+        </div>
+
+        {/* Inventory Status */}
+        <div className="p-4 border-t border-purple-900/20 bg-black/20 hidden md:block">
+           <h4 className="text-[10px] text-purple-500/70 uppercase tracking-widest font-bold mb-3 flex items-center gap-2"><Package size={12}/> 보유 아이템</h4>
+           <div className="space-y-1.5">
+              {Object.entries(inventory).map(([id, count]) => {
+                const item = items.find(i => i.id === id);
+                if (!item || count <= 0) return null;
+                return (
+                  <div key={id} className="flex justify-between items-center text-[11px] text-neutral-400 bg-neutral-900/50 px-2 py-1 rounded">
+                    <span>{item.icon} {item.name}</span>
+                    <span className="text-purple-400 font-bold">x{count}</span>
+                  </div>
+                );
+              })}
+              {Object.values(inventory).every(v => v === 0) && <div className="text-[10px] text-neutral-700 italic text-center">비어 있음</div>}
+           </div>
         </div>
 
         {/* Desktop Total Credits Footer */}
@@ -114,11 +145,16 @@ const Store: React.FC<Props> = ({ characters, setCharacters, credits, setCredits
                 <div key={item.id} className="bg-neutral-900/60 border border-purple-900/30 p-4 md:p-6 rounded-xl flex flex-col justify-between hover:border-purple-500/50 transition-all">
                   <div className="flex justify-between items-start mb-4">
                     <span className="text-3xl md:text-4xl">{item.icon}</span>
-                    <span className="bg-amber-500/10 border border-amber-500/30 px-2 py-1 rounded text-amber-500 text-xs font-bold">{item.price} CR</span>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="bg-amber-500/10 border border-amber-500/30 px-2 py-1 rounded text-amber-500 text-xs font-bold">{item.price} CR</span>
+                      {item.effect === 'gift' && inventory[item.id] > 0 && (
+                        <span className="text-[10px] text-purple-400 font-bold uppercase">보유 중: {inventory[item.id]}</span>
+                      )}
+                    </div>
                   </div>
                   <h4 className="text-base md:text-lg font-bold text-neutral-200 mb-2">{item.name}</h4>
                   <p className="text-xs md:text-[13px] text-neutral-500 mb-4 md:mb-6 leading-relaxed">{item.description}</p>
-                  <button onClick={() => handleBuyClick(item)} className="w-full py-2.5 bg-neutral-800 hover:bg-purple-600 text-neutral-400 hover:text-white border border-purple-900/50 text-xs font-bold uppercase rounded-lg transition-all active:scale-95">수술 개시</button>
+                  <button onClick={() => handleBuyClick(item)} className="w-full py-2.5 bg-neutral-800 hover:bg-purple-600 text-neutral-400 hover:text-white border border-purple-900/50 text-xs font-bold uppercase rounded-lg transition-all active:scale-95">구매 / 처방</button>
                 </div>
               ))}
            </div>

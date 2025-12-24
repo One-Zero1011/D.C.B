@@ -163,17 +163,15 @@ const CharacterCard: React.FC<Props> = ({ character, allCharacters = [], onUpdat
           )}
         </div>
         <div className="flex items-center gap-2">
-          {!isDead && (
-            isEditing ? (
-              <div className="flex gap-1">
-                <button onClick={handleDelete} className="p-1 text-red-600 hover:bg-red-950/50 hover:text-red-500 rounded-sm transition-colors" title="요원 영구 삭제"><Trash2 size={14} /></button>
-                <div className="w-px h-4 bg-neutral-800 mx-1"></div>
-                <button onClick={handleSave} className="p-1 text-green-500 hover:bg-green-500/10 rounded-sm transition-colors"><Check size={14} /></button>
-                <button onClick={handleCancel} className="p-1 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300 rounded-sm transition-colors"><X size={14} /></button>
-              </div>
-            ) : (
-              <button onClick={() => setIsEditing(true)} className="p-1 text-amber-500/40 hover:text-amber-500 hover:bg-amber-500/10 rounded-sm transition-colors"><Settings size={14} /></button>
-            )
+          {isEditing ? (
+            <div className="flex gap-1">
+              <button onClick={handleDelete} className="p-1 text-red-600 hover:bg-red-950/50 hover:text-red-500 rounded-sm transition-colors" title="요원 영구 삭제"><Trash2 size={14} /></button>
+              <div className="w-px h-4 bg-neutral-800 mx-1"></div>
+              <button onClick={handleSave} className="p-1 text-green-500 hover:bg-green-500/10 rounded-sm transition-colors"><Check size={14} /></button>
+              <button onClick={handleCancel} className="p-1 text-neutral-500 hover:bg-neutral-800 hover:text-neutral-300 rounded-sm transition-colors"><X size={14} /></button>
+            </div>
+          ) : (
+            <button onClick={() => setIsEditing(true)} className="p-1 text-amber-500/40 hover:text-amber-500 hover:bg-amber-500/10 rounded-sm transition-colors"><Settings size={14} /></button>
           )}
           <div className={`text-[9px] px-2 py-0.5 border font-bold uppercase tracking-widest ${isDead ? 'border-red-700 text-red-700 bg-red-950/30' : 'border-amber-500 text-amber-500 bg-amber-500/5'}`}>{character.status}</div>
         </div>

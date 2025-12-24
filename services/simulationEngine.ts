@@ -24,7 +24,6 @@ export const processTurn = (characters: Character[]): { updatedCharacters: Chara
   
   // ------------------------------------------------
   // Global Check: 팀 중 한 명이라도 임무 중인지 확인
-  // (모든 요원은 동시에 임무에 진입하고 동시에 나옵니다)
   // ------------------------------------------------
   const activeMissionData = aliveCharacters.find(c => c.activeMission)?.activeMission;
 
@@ -37,7 +36,7 @@ export const processTurn = (characters: Character[]): { updatedCharacters: Chara
 
     // 이번 턴의 행동을 결정할 리더 요원 선출 (랜덤)
     const leaderActor = pick(aliveCharacters);
-    let updatedCharacters = [...characters]; // 전체 캐릭터 목록 복사
+    let updatedCharacters = [...characters]; 
 
     if (mission) {
       const stage = mission.stages[stageId];
@@ -53,7 +52,7 @@ export const processTurn = (characters: Character[]): { updatedCharacters: Chara
                color: stage.visualEffect.color,
                fontSize: stage.visualEffect.fontSize,
                speed: stage.visualEffect.speed,
-               customEmojis: stage.visualEffect.customEmojis // 누락된 커스텀 이모지 전달 추가
+               customEmojis: stage.visualEffect.customEmojis 
              });
              newLogs.push(glitchLog);
         }
@@ -68,11 +67,10 @@ export const processTurn = (characters: Character[]): { updatedCharacters: Chara
         });
 
         // 2. 동료 요원들의 반응 로그 (1~2명 랜덤)
-        // 리더를 제외한 다른 생존자들 중에서 선택
         const reactors = aliveCharacters.filter(c => c.id !== leaderActor.id);
         const numReactors = Math.min(reactors.length, Math.random() > 0.5 ? 2 : 1);
         
-        // Fisher-Yates shuffle for randomness
+        // Fisher-Yates shuffle
         for (let i = reactors.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [reactors[i], reactors[j]] = [reactors[j], reactors[i]];
@@ -84,11 +82,12 @@ export const processTurn = (characters: Character[]): { updatedCharacters: Chara
                 timestamp: Date.now(),
                 type: 'dialogue',
                 characterId: reactor.id,
-                message: db.getMissionReaction(missionId, reactor.mbti, reactor.name)
+                // 스테이지 ID를 함께 전달하여 스테이지별 대응 대사 출력
+                message: db.getMissionReaction(missionId, stageId, reactor.mbti, reactor.name)
             });
         });
 
-        // 3. 리더의 선택 (AI Decision)
+        // 3. 리더의 선택
         const chosenChoice = decideChoice(leaderActor, stage);
 
         newLogs.push({
@@ -99,8 +98,7 @@ export const processTurn = (characters: Character[]): { updatedCharacters: Chara
           message: `> ${leaderActor.name}의 선택: [${chosenChoice.text}]`
         });
 
-        // 4. 결과 적용 (리스크/보상) - 리더에게 주로 적용되지만, 전체 영향도 고려 가능
-        // 현재 로직은 리더가 대표로 데미지/회복을 받음 (추후 광역 데미지 확장 가능)
+        // 4. 결과 적용
         let updatedLeader = { ...leaderActor };
         const resultLog = applyChoiceResult(updatedLeader, chosenChoice);
         if (resultLog) {
@@ -113,10 +111,9 @@ export const processTurn = (characters: Character[]): { updatedCharacters: Chara
            });
         }
         
-        // 리더 상태 업데이트 반영
         updatedCharacters = updatedCharacters.map(c => c.id === updatedLeader.id ? updatedLeader : c);
 
-        // 5. 다음 단계로 이동 또는 종료 (모든 생존 요원에게 적용)
+        // 5. 다음 단계로 이동 또는 종료
         let nextMissionState: typeof activeMissionData | null = null;
         let isMissionComplete = false;
 
@@ -131,13 +128,9 @@ export const processTurn = (characters: Character[]): { updatedCharacters: Chara
           nextMissionState = null;
         }
 
-        // 모든 생존 요원의 activeMission 상태 동기화 및 보상 지급
         updatedCharacters = updatedCharacters.map(c => {
-            if (c.status !== '생존') return c; // 사망자는 제외
-
+            if (c.status !== '생존') return c; 
             const newChar = { ...c, activeMission: nextMissionState };
-            
-            // 임무 완료 시 보상 (전원 지급)
             if (isMissionComplete) {
                 newChar.anomaliesFixed += 5;
             }
@@ -154,11 +147,9 @@ export const processTurn = (characters: Character[]): { updatedCharacters: Chara
         }
 
       } else {
-        // 스테이지 오류 시 강제 종료
          updatedCharacters = updatedCharacters.map(c => ({ ...c, activeMission: null }));
       }
     } else {
-      // 미션 데이터 오류 시 강제 종료
       updatedCharacters = updatedCharacters.map(c => ({ ...c, activeMission: null }));
     }
 
@@ -169,7 +160,6 @@ export const processTurn = (characters: Character[]): { updatedCharacters: Chara
   // Case B: 일반 턴 진행 (임무 없음)
   // ------------------------------------------------
   
-  // 0. 심층 임무 진입 체크 (글로벌 이벤트)
   if (Math.random() < MISSION_TRIGGER_CHANCE) {
     const randomMission = pick(db.getMissions());
     if (randomMission) {
@@ -180,7 +170,6 @@ export const processTurn = (characters: Character[]): { updatedCharacters: Chara
         message: `⚠️ [경고] 차원 균열 감지! "${randomMission.title}" 구역으로 모든 요원이 강제 전송됩니다!`
       });
 
-      // 모든 생존 요원을 해당 미션으로 진입시킴
       const updatedCharacters = characters.map(c => {
           if (c.status !== '생존') return c;
           return {
@@ -197,7 +186,6 @@ export const processTurn = (characters: Character[]): { updatedCharacters: Chara
     }
   }
 
-  // 기존 일반 로직 (임무가 아닐 때만 실행)
   const actor = pick(aliveCharacters);
   let updatedActor = { ...actor };
   
@@ -268,13 +256,10 @@ export const processTurn = (characters: Character[]): { updatedCharacters: Chara
   } 
   else if (eventType === 'interaction' && target) {
     const { isPositive } = resolveInteractionOutcome(updatedActor, target);
-    const relation = updatedActor.relationships[target.id]; // 관계 타입 가져오기
+    const relation = updatedActor.relationships[target.id];
     
-    // 관계에 따른 기본 로그 생성 (관계가 없다면 일반 대화 로그처럼 처리 가능하지만, Form에서 설정된 관계가 우선)
     if (relation) {
-        // 관계 기반 특수 로그
         const relLog = db.getRelationshipLog(updatedActor.name, target.name, relation);
-        
         if (isPositive) {
             updatedActor = db.adjustAffinity(updatedActor, target.id, SIMULATION_CONSTANTS.INTERACTION_POSITIVE_BONUS.affinity);
             updatedActor.sanity = Math.min(updatedActor.maxSanity, updatedActor.sanity + SIMULATION_CONSTANTS.INTERACTION_POSITIVE_BONUS.sanity);
@@ -297,7 +282,6 @@ export const processTurn = (characters: Character[]): { updatedCharacters: Chara
             });
         }
     } else {
-        // 관계가 없는 경우의 기본 로직
         if (isPositive) {
             updatedActor = db.adjustAffinity(updatedActor, target.id, SIMULATION_CONSTANTS.INTERACTION_POSITIVE_BONUS.affinity);
             updatedActor.sanity = Math.min(updatedActor.maxSanity, updatedActor.sanity + SIMULATION_CONSTANTS.INTERACTION_POSITIVE_BONUS.sanity);
@@ -322,7 +306,6 @@ export const processTurn = (characters: Character[]): { updatedCharacters: Chara
     }
   } 
   else {
-    // MBTI별 고유 로그 출력 (일반 상태일 때만)
     newLogs.push({
       id: uid(),
       timestamp: Date.now(),
@@ -343,29 +326,21 @@ export const processTurn = (characters: Character[]): { updatedCharacters: Chara
   return { updatedCharacters, newLogs };
 };
 
-// --- Helper Logic for Missions ---
-
 function decideChoice(char: Character, stage: MissionStage): MissionChoice {
   const candidates = stage.choices.map(choice => {
     let score = 0;
-    
     if (choice.requiredStat === 'strength' && char.strength > 20) score += 3;
     if (choice.requiredStat === 'sanity' && char.sanity > 30) score += 3;
-    
     if (char.sanity < 20 && choice.risk === 'low') score += 5;
-    
     if (char.sanity > 40 && char.body.torso.current > 50 && choice.risk === 'high') score += 2;
-
     return { choice, score: score + Math.random() * 2 }; 
   });
-
   candidates.sort((a, b) => b.score - a.score);
   return candidates[0].choice;
 }
 
 function applyChoiceResult(char: Character, choice: MissionChoice): string | null {
   let log = null;
-
   if (choice.reward) {
     if (choice.reward.hp) {
       if (choice.reward.hp < 0) {
@@ -376,7 +351,6 @@ function applyChoiceResult(char: Character, choice: MissionChoice): string | nul
         log = `충격으로 인해 체력이 ${dmg} 감소했습니다.`;
       } 
     }
-    
     if (choice.reward.sanity) {
       char.sanity = Math.max(0, Math.min(char.maxSanity, char.sanity + choice.reward.sanity));
       if (choice.reward.sanity < 0) {
@@ -384,6 +358,5 @@ function applyChoiceResult(char: Character, choice: MissionChoice): string | nul
       }
     }
   }
-
   return log;
 }

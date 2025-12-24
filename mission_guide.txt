@@ -1,0 +1,142 @@
+================================================================================
+[ Dimension Corp: Mission Operational Guide - Ver 4.0.3 ]
+================================================================================
+
+본 가이드는 각 차원 미션의 분기점과 위험도, 그리고 예상되는 결과 데이터를 담고 있습니다.
+모든 요원은 작전 투입 전 해당 루트를 숙지하여 자산 손실을 최소화하십시오.
+
+--------------------------------------------------------------------------------
+1. 심해 호텔 404호 (Hotel Glitch)
+--------------------------------------------------------------------------------
+- [진입 스테이지] stage_entry (복도)
+  ㄴ A. 404호 진입 (Risk: High / Req: Strength) -> stage_room_404
+  ㄴ B. 메뉴판 확인 (Risk: Low / Req: Sanity) -> stage_menu
+
+- [분기] stage_menu (카트)
+  ㄴ A. 손을 밟음 (Risk: High / Req: Strength) -> stage_corridor_chase
+  ㄴ B. 정중히 거절 (Risk: Low / Req: Sanity) -> stage_polite_exit
+
+- [분기] stage_room_404 (거울의 방)
+  ㄴ A. 얼굴 데이터 복사 -> 엔딩 (결과: Sanity -20, Credits +10)
+  ㄴ B. 거울 파괴 -> 엔딩 (결과: Sanity -5, Credits +5)
+
+- [결차] stage_corridor_chase (추격전)
+  ㄴ A. 질주 -> 엔딩 (결과: Credits +3)
+  ㄴ B. 응전 -> 엔딩 (결과: HP -10, Credits +8)
+
+- [결차] stage_polite_exit (로비 귀환)
+  ㄴ A. 보고 완료 -> 엔딩 (결과: Sanity +5, Credits +5)
+
+--------------------------------------------------------------------------------
+2. 1999년의 교육용 비디오 (VHS Tape)
+--------------------------------------------------------------------------------
+- [진입 스테이지] stage_intro (질문)
+  ㄴ A. 모른다고 대답 (Risk: Low / Req: Sanity) -> stage_lecture
+  ㄴ B. TV 전원 차단 (Risk: High / Req: Strength) -> stage_resistance
+
+- [분기] stage_lecture (세뇌 교육)
+  ㄴ A. 순응 복창 (Risk: Low / Req: Sanity) -> stage_compliance
+  ㄴ B. 침묵 (Risk: High) -> stage_silence (Sanity -10)
+
+- [분기] stage_resistance (저항)
+  ㄴ A. 도망 -> 엔딩 (결과: Credits +2)
+  ㄴ B. 테이프 강제 사출 -> 엔딩 (결과: HP -15, Credits +10)
+
+- [결말] stage_compliance (합격)
+  ㄴ A. 복귀 -> 엔딩 (결과: Sanity -5, Credits +7)
+
+- [결말] stage_silence (교정)
+  ㄴ A. 정신 상실 -> 엔딩 (결과: FATAL, HP -20, Sanity -30)
+
+--------------------------------------------------------------------------------
+3. 원더-글리치 랜드 (Wonder Park)
+--------------------------------------------------------------------------------
+- [진입 스테이지] stage_wonder_gate (입구)
+  ㄴ A. 회전목마 진입 (Risk: Low / Req: Sanity) -> stage_merry_go_round
+  ㄴ B. 롤러코스터 진입 (Risk: High / Req: Strength) -> stage_roller_coaster
+
+- [분기] stage_merry_go_round (목마)
+  ㄴ A. 전원 차단 (Risk: High / Req: Strength) -> stage_mascot_hell
+  ㄴ B. 춤추기 (Risk: Fatal / Req: Sanity) -> ending_ride_forever
+
+- [분기] stage_roller_coaster (코스터)
+  ㄴ A. 선로 재구축 (Risk: Low / Req: Sanity) -> stage_mascot_hell
+  ㄴ B. 엔진 파괴 (Risk: Fatal) -> ending_system_purge (HP -30)
+
+- [결전] stage_mascot_hell (삐에로 픽셀)
+  ㄴ A. 백신 주입 (Risk: High / Req: Strength) -> ending_successful_debug
+  ㄴ B. 억지 웃음 (Risk: Fatal) -> ending_data_corruption (Sanity -40)
+
+- [결말] 각 분기 엔딩 (성공/영구 귀속/퍼지/오염)
+
+--------------------------------------------------------------------------------
+4. 심연의 결의 (Abyss Morality)
+--------------------------------------------------------------------------------
+- [진입 스테이지] stage_golden_flowers (꽃밭)
+  ㄴ A. 자비 (도움 요청) -> stage_the_guardian
+  ㄴ B. 전투 (짓밟기) -> stage_the_judgment
+
+- [분기] stage_the_guardian (수호자)
+  ㄴ A. 파이 섭취 (Risk: High) -> stage_the_judgment (Sanity +15, HP -10)
+  ㄴ B. 거절 (Risk: Low) -> stage_the_judgment
+
+- [결전] stage_the_judgment (심판)
+  ㄴ A. 참회 (Risk: Low / Req: Sanity) -> ending_pacifist
+  ㄴ B. 일축 (Risk: Fatal / Req: Strength) -> ending_genocide
+
+--------------------------------------------------------------------------------
+5. 데이터 수확의 계절 (Pixel Harvest)
+--------------------------------------------------------------------------------
+- [진입 스테이지] stage_bus_stop (정류장)
+  ㄴ A. 농사 (Risk: Low / Req: Intelligence) -> stage_planting_data
+  ㄴ B. 광산 (Risk: High / Req: Strength) -> stage_shadow_mines
+
+- [분기] stage_planting_data (수확)
+  ㄴ A. 기억 비료 (Risk: High) -> stage_community_center (Sanity -15, Credits +25)
+  ㄴ B. 안전 수확 (Risk: Low) -> stage_community_center (Credits +10)
+
+- [분기] stage_shadow_mines (채굴)
+  ㄴ A. 그림자 처단 (Risk: High) -> stage_community_center (HP -20, Credits +30)
+  ㄴ B. 데이터 분석 (Risk: Low / Req: Sanity) -> stage_community_center
+
+- [마무리] stage_community_center -> ending_grandpa_ghost (Credits +40)
+
+--------------------------------------------------------------------------------
+6. ■■층의 특별 수칙 (Redacted Rules)
+--------------------------------------------------------------------------------
+- [진입 스테이지] stage_the_note (안내문)
+  ㄴ A. 무시하고 전진 (Risk: High / Req: Strength) -> stage_blue_suit_man
+  ㄴ B. 가려진 단어 복구 (Risk: Low / Req: Intelligence) -> stage_deciphering
+
+- [분기] stage_blue_suit_man (파란 정장)
+  ㄴ A. 커피 섭취 (Risk: Fatal) -> ending_integrated (Permanent Loss)
+  ㄴ B. 공격 (Risk: High / Req: Strength) -> stage_running_away
+
+- [분기] stage_deciphering (해독)
+  ㄴ A. 코어 추적 (Risk: Low / Req: Intelligence) -> stage_running_away
+
+- [결차] stage_running_away (탈출)
+  ㄴ A. 투신 (Risk: Fatal) -> ending_free_fall (Sanity -50)
+  ㄴ B. 전력 질주 (Risk: High / Req: Strength) -> ending_escaped_rules (Success)
+
+--------------------------------------------------------------------------------
+7. 심연의 주파수 &@^%(@ (Void Signal)
+--------------------------------------------------------------------------------
+- [진입 스테이지] stage_tuning (튜닝)
+  ㄴ A. 경청 (Risk: Low / Req: Sanity) -> stage_the_voice
+  ㄴ B. 차단 (Risk: High / Req: Intelligence) -> stage_static_storm
+
+- [분기] stage_the_voice (목소리)
+  ㄴ A. 동료 관찰 (Risk: Fatal / Req: Sanity) -> stage_eye_contact
+  ㄴ B. 무시 (Risk: Low) -> stage_static_storm
+
+- [결차] stage_eye_contact (눈맞춤)
+  ㄴ A. 거부 -> ending_erased (Permanent Loss, Sanity -60)
+
+- [결차] stage_static_storm (폭풍)
+  ㄴ A. 물리 타격 (Risk: High / Req: Strength) -> ending_signal_lost
+  ㄴ B. 보호막 가동 (Risk: Low / Req: Intelligence) -> ending_signal_lost
+
+================================================================================
+[ 가이드 종료 ]
+================================================================================

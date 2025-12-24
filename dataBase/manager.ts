@@ -1,3 +1,4 @@
+
 import { MBTI, Species, Character, Body, BodyPart, StoreItem, CalendarEvent, Mission } from "../types";
 import { INITIAL_SPECIES_LIST, INITIAL_MBTI_LIST, INITIAL_RELATIONSHIP_TYPES, RELATIONSHIP_CATEGORIES } from "./seeds/classifications";
 import { INITIAL_MBTI_TRAITS, INITIAL_MENTAL_STATES } from "./seeds/traits";
@@ -46,7 +47,7 @@ class DatabaseManager {
     mbti: MBTI;
     baseHp: number;
     strength: number;
-    sanity: number; // This is treated as the initial MAX sanity
+    sanity: number;
   }): Character {
     const createPart = (name: string, hpRatio: number, isVital = false): BodyPart => ({
       name,
@@ -82,11 +83,11 @@ class DatabaseManager {
       maxHp: data.baseHp,
       strength: data.strength,
       sanity: data.sanity,
-      maxSanity: data.sanity, // Initialize Max Sanity
+      maxSanity: data.sanity,
       body,
       status: '생존',
       mentalState: '안정',
-      activeMission: null, // 초기에는 임무 없음
+      activeMission: null,
       relationships: {},
       affinities: {},
       npcAffinities: initialNpcAffinities,
@@ -117,7 +118,7 @@ class DatabaseManager {
         this.repairAllBodyParts(updated);
         break;
       case 'sanity':
-        const recoveryAmount = Math.floor(updated.maxSanity * 0.3); // 30% 회복
+        const recoveryAmount = Math.floor(updated.maxSanity * 0.3);
         updated.sanity = Math.min(updated.maxSanity, updated.sanity + recoveryAmount);
         updated.mentalState = '안정'; 
         break;
@@ -202,7 +203,7 @@ class DatabaseManager {
   getMissions() { return this.missions; }
   getMissionById(id: string) { return this.missions.find(m => m.id === id); }
 
-  // --- Log Generators (New) ---
+  // --- Log Generators ---
   
   getGrowthLog(type: 'hp' | 'sanity', name: string, amount: number): string {
     const templates = GROWTH_LOGS[type];
@@ -239,11 +240,24 @@ class DatabaseManager {
     return template.split('{name}').join(name);
   }
 
-  getMissionReaction(missionId: string, mbti: MBTI, name: string): string {
+  /**
+   * 미션 및 스테이지별 MBTI 대화문을 가져옵니다.
+   */
+  getMissionReaction(missionId: string, stageId: string, mbti: MBTI, name: string): string {
     const mission = MISSION_REACTIONS[missionId];
     if (!mission) return `... (${name}는 긴장한 듯 침묵합니다.)`;
 
-    const reactions = mission[mbti];
+    const stageReactions = mission[stageId];
+    if (!stageReactions) {
+       // 해당 스테이지 반응이 없으면 첫 번째 스테이지나 일반 반응 시도 (폴백)
+       const fallbackStage = Object.values(mission)[0];
+       if (!fallbackStage) return `... (${name}는 상황을 주시합니다.)`;
+       const reactions = fallbackStage[mbti];
+       if (!reactions || reactions.length === 0) return `... (${name}는 상황을 주시합니다.)`;
+       return reactions[Math.floor(Math.random() * reactions.length)].split('{name}').join(name);
+    }
+
+    const reactions = stageReactions[mbti];
     if (!reactions || reactions.length === 0) return `... (${name}는 상황을 주시합니다.)`;
 
     const reaction = reactions[Math.floor(Math.random() * reactions.length)];
@@ -253,7 +267,6 @@ class DatabaseManager {
   getRelationshipLog(actorName: string, targetName: string, relation: string): string {
     const templates = RELATIONSHIP_LOGS[relation];
     if (!templates || templates.length === 0) {
-       // Fallback for undefined relationships
        return `${actorName}, ${targetName}와(과) 상호작용합니다. [${relation}]`;
     }
     const template = templates[Math.floor(Math.random() * templates.length)];

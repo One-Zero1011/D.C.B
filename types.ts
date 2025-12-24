@@ -1,3 +1,4 @@
+
 export type MBTI = 
   | 'ISTJ' | 'ISFJ' | 'INFJ' | 'INTJ'
   | 'ISTP' | 'ISFP' | 'INFP' | 'INTP'
@@ -61,8 +62,11 @@ export type VisualEffectType =
   | 'screen_crack'  
   | 'reality_tear'  
   | 'vhs_glitch'
-  | 'quantum_ghost' // 양자 잔상
-  | 'data_leak';    // 데이터 누출
+  | 'quantum_ghost' 
+  | 'data_leak'
+  | 'neon_flicker'    // 신규: 네온 점멸
+  | 'pixel_meltdown'  // 신규: 픽셀 흘러내림
+  | 'hypnotic_loop';  // 신규: 최면 스파이럴
 
 /**
  * 글리치 효과의 세부 설정
@@ -154,8 +158,9 @@ export interface StoreItem {
   name: string;
   description: string;
   price: number;
-  effect: 'hp' | 'sanity' | 'body';
+  effect: 'hp' | 'sanity' | 'body' | 'gift';
   icon: string;
+  targetNpcId?: string; // 선물용 아이템일 경우 대상 NPC ID
 }
 
 export interface CalendarEvent {

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { X, FileDown, FileUp, Users, Download, RotateCcw, Save, ShieldAlert, Database, HardDrive, Terminal, Play, CheckCircle2, ChevronRight, ChevronDown, CornerDownRight, Zap, SlidersHorizontal } from 'lucide-react';
 import { db } from '../dataBase/manager';
@@ -163,8 +164,11 @@ const SettingsModal: React.FC<Props> = ({
                                   <option value="screen_crack">Screen Crack</option>
                                   <option value="reality_tear">Reality Tear (Overhauled)</option>
                                   <option value="vhs_glitch">VHS Glitch</option>
-                                  <option value="quantum_ghost">Quantum Ghost (New)</option>
-                                  <option value="data_leak">Data Leak (New)</option>
+                                  <option value="quantum_ghost">Quantum Ghost</option>
+                                  <option value="data_leak">Data Leak</option>
+                                  <option value="neon_flicker">Neon Flicker (WonderPark)</option>
+                                  <option value="pixel_meltdown">Pixel Meltdown (WonderPark)</option>
+                                  <option value="hypnotic_loop">Hypnotic Loop (WonderPark)</option>
                                 </select>
                                 <input 
                                   type="text"
