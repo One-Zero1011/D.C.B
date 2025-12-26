@@ -11,7 +11,7 @@ import {
 import { NPC } from '../dataBase/seeds/npcs';
 import GroupChatWidget from './GroupChatWidget';
 import { getStabilizationScore } from '../dataBase/storyService';
-import { NPC_RELATIONSHIPS } from '../dataBase/npc/relationships';
+import { NPC_RELATIONSHIPS, RelationshipInfo } from '../dataBase/npc/relationships';
 import { DIMENSION_REGISTRY } from '../dataBase/seeds/dimensions';
 
 interface Props {
@@ -182,7 +182,7 @@ const NPCInteraction: React.FC<Props> = ({ characters, inventory, setInventory, 
   const RelationshipSection = () => {
     const threshold = THRESHOLDS.relationships;
     const isUnlocked = currentAffinity >= threshold;
-    const relationships = NPC_RELATIONSHIPS.filter(r => r.subjectId === selectedNpc.id);
+    const relationships: RelationshipInfo[] = NPC_RELATIONSHIPS.filter(r => r.subjectId === selectedNpc.id);
 
     if (relationships.length === 0) return null;
 
@@ -287,10 +287,11 @@ const NPCInteraction: React.FC<Props> = ({ characters, inventory, setInventory, 
         </div>
 
         {/* Content Wrapper */}
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden md:overflow-visible">
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden md:overflow-hidden md:h-full">
           
           {/* Group Chat Widget: Visible on Desktop OR Mobile Chat Tab */}
-          <div className={`${mobileTab === 'chat' ? 'flex' : 'hidden'} md:flex flex-col shrink-0 h-full md:h-auto overflow-hidden`}>
+          {/* Desktop: Fixed height to prevent pushing list. Mobile: Full height of container. */}
+          <div className={`${mobileTab === 'chat' ? 'flex' : 'hidden'} md:flex flex-col shrink-0 h-full md:h-[300px] overflow-hidden`}>
             <GroupChatWidget 
               selectedChar={selectedChar} 
               allNpcs={allNpcs} 
@@ -301,7 +302,7 @@ const NPCInteraction: React.FC<Props> = ({ characters, inventory, setInventory, 
           </div>
 
           {/* NPC List Header (Desktop Only) */}
-          <div className="hidden md:flex p-2 border-b border-amber-900/20 shrink-0 bg-neutral-900/30 mt-1">
+          <div className="hidden md:flex p-2 border-b border-amber-900/20 shrink-0 bg-neutral-900/30 mt-1 border-t md:border-t border-amber-900/30">
             <h3 className="text-[10px] text-amber-500/60 uppercase tracking-widest font-bold flex items-center gap-2 px-2">
               <Users2 size={12} /> 부서별 지휘관 목록
             </h3>

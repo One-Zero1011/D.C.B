@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { db } from '../dataBase/manager';
-import { Character, StoreItem, Body } from '../types';
+import { Character, StoreItem, Body, BodyPart } from '../types';
 import { ShoppingBag, User, Coins, X, Activity, AlertTriangle, XCircle, Package } from 'lucide-react';
 
 interface Props {
@@ -180,7 +180,7 @@ const Store: React.FC<Props> = ({ characters, setCharacters, credits, setCredits
 
               <div className="overflow-y-auto p-2 custom-scrollbar grid grid-cols-2 gap-2">
                 {bodyPartKeys.map(key => {
-                  const part = selectedChar.body[key];
+                  const part = selectedChar.body[key] as BodyPart;
                   const isFull = part.current === part.max;
                   const isDestroyed = part.current <= 0;
                   

@@ -99,7 +99,7 @@ const CharacterCard: React.FC<Props> = ({ character, allCharacters = [], onUpdat
   };
 
   const topAffinities = Object.entries(character.affinities)
-    .map(([id, val]) => ({ id, val, name: allCharacters.find(c => c.id === id)?.name || '알 수 없음' }))
+    .map(([id, val]) => ({ id, val: val as number, name: allCharacters.find(c => c.id === id)?.name || '알 수 없음' }))
     .sort((a, b) => Math.abs(b.val) - Math.abs(a.val))
     .slice(0, 3);
 
