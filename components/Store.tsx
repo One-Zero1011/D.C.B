@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { db } from '../dataBase/manager';
 import { Character, StoreItem, Body, BodyPart } from '../types';
-import { ShoppingBag, User, Coins, X, Activity, AlertTriangle, XCircle, Package } from 'lucide-react';
+import { ShoppingBag, User, Coins, X, Activity, AlertTriangle, XCircle, Package, ShieldAlert } from 'lucide-react';
 
 interface Props {
   characters: Character[];
@@ -23,15 +23,33 @@ const Store: React.FC<Props> = ({ characters, setCharacters, credits, setCredits
   const [showBodySelector, setShowBodySelector] = useState(false);
   const [pendingItem, setPendingItem] = useState<StoreItem | null>(null);
 
+  // 에러 모달 상태
+  const [errorModal, setErrorModal] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
+
   const selectedChar = characters.find(c => c.id === selectedCharId);
+
+  const showError = (msg: string) => {
+    setErrorModal({ show: true, message: msg });
+  };
+
+  const closeError = () => {
+    setErrorModal({ show: false, message: '' });
+  };
 
   const handleBuyClick = (item: StoreItem) => {
     if (item.effect !== 'gift' && !selectedCharId) {
-      alert("치료할 요원을 선택하십시오.");
+      showError("치료할 요원을 선택하십시오.");
       return;
     }
+
+    // 사망한 요원 체크 로직 (커스텀 모달 사용)
+    if (item.effect !== 'gift' && selectedChar && selectedChar.status === '사망') {
+      showError("경고: 사망한 요원에게는 의료용 아이템을 사용할 수 없습니다.\n(생체 반응 소실로 인한 소생 불가)");
+      return;
+    }
+
     if (credits < item.price) {
-      alert("공용 자금(Credits)이 부족합니다.");
+      showError("공용 자금(Credits)이 부족합니다.");
       return;
     }
 
@@ -107,7 +125,7 @@ const Store: React.FC<Props> = ({ characters, setCharacters, credits, setCredits
            <div className="space-y-1.5">
               {Object.entries(inventory).map(([id, count]) => {
                 const item = items.find(i => i.id === id);
-                if (!item || count <= 0) return null;
+                if (!item || (count as number) <= 0) return null;
                 return (
                   <div key={id} className="flex justify-between items-center text-[11px] text-neutral-400 bg-neutral-900/50 px-2 py-1 rounded">
                     <span>{item.icon} {item.name}</span>
@@ -159,6 +177,29 @@ const Store: React.FC<Props> = ({ characters, setCharacters, credits, setCredits
               ))}
            </div>
         </div>
+
+        {/* Error Modal (Custom Alert) */}
+        {errorModal.show && (
+          <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-neutral-900 border border-red-500/50 shadow-[0_0_30px_rgba(220,38,38,0.2)] max-w-sm w-full p-6 rounded-sm relative">
+              <div className="flex items-start gap-4 mb-4">
+                <ShieldAlert className="text-red-500 shrink-0" size={32} />
+                <div>
+                  <h3 className="text-red-500 font-bold uppercase tracking-widest mb-1">System Alert</h3>
+                  <p className="text-xs text-neutral-300 whitespace-pre-wrap leading-relaxed">{errorModal.message}</p>
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <button 
+                  onClick={closeError}
+                  className="px-4 py-2 bg-red-900/30 border border-red-500/30 text-red-400 hover:bg-red-900/50 hover:text-red-200 text-xs font-bold uppercase tracking-widest rounded-sm transition-colors"
+                >
+                  확인 (Confirm)
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Body Part Selector Modal - Bottom Sheet style on Mobile */}
         {showBodySelector && selectedChar && pendingItem && (

@@ -182,7 +182,7 @@ const NPCInteraction: React.FC<Props> = ({ characters, inventory, setInventory, 
   const RelationshipSection = () => {
     const threshold = THRESHOLDS.relationships;
     const isUnlocked = currentAffinity >= threshold;
-    const relationships: RelationshipInfo[] = NPC_RELATIONSHIPS.filter(r => r.subjectId === selectedNpc.id);
+    const relationships = NPC_RELATIONSHIPS.filter((r) => r.subjectId === selectedNpc.id);
 
     if (relationships.length === 0) return null;
 
@@ -310,7 +310,9 @@ const NPCInteraction: React.FC<Props> = ({ characters, inventory, setInventory, 
           
           {/* NPC List: Visible on Desktop OR Mobile List Tab */}
           <div className={`${mobileTab === 'list' ? 'flex' : 'hidden'} md:flex flex-col flex-1 overflow-y-auto custom-scrollbar p-2 space-y-2`}>
-            {Object.entries(npcsByTeam).map(([teamName, npcs]) => (
+            {Object.entries(npcsByTeam).map(([teamName, npcs]) => {
+              const teamNpcs = npcs as NPC[];
+              return (
               <div key={teamName} className="space-y-1">
                 {/* Team Header */}
                 <div className="w-full flex items-center justify-between p-2 text-[10px] font-bold uppercase tracking-wider text-amber-500/40 hover:bg-white/5 transition-all rounded group/header border border-transparent hover:border-amber-500/20">
@@ -338,14 +340,14 @@ const NPCInteraction: React.FC<Props> = ({ characters, inventory, setInventory, 
                     >
                       <MessageCircle size={14} fill={activeChatChannel === teamName ? "currentColor" : "none"} />
                     </button>
-                    <span className="bg-amber-900/20 px-1.5 py-0.5 rounded text-[9px] text-neutral-500 min-w-[20px] text-center">{npcs.length}</span>
+                    <span className="bg-amber-900/20 px-1.5 py-0.5 rounded text-[9px] text-neutral-500 min-w-[20px] text-center">{teamNpcs.length}</span>
                   </div>
                 </div>
                 
                 {/* NPC Items */}
                 {expandedTeams.has(teamName) && (
                   <div className="space-y-1 pl-1 animate-in slide-in-from-top-1 duration-200">
-                    {npcs.map(npc => {
+                    {teamNpcs.map(npc => {
                       const isSelected = selectedNpcId === npc.id;
                       const npcStyle = getColorStyles(npc.themeColor);
                       return (
@@ -371,196 +373,196 @@ const NPCInteraction: React.FC<Props> = ({ characters, inventory, setInventory, 
                   </div>
                 )}
               </div>
-            ))}
+            );})}
           </div>
         </div>
-      </div>
 
-      {/* Main Area */}
-      <div className="flex-1 flex flex-col min-w-0 relative overflow-hidden border-t md:border-t-0 border-amber-900/20">
+        {/* Main Area */}
         {/* Header: Agent Selector */}
-        <div className="p-4 border-b border-amber-900/20 bg-black/40 flex flex-col md:flex-row items-start md:items-center justify-between shrink-0 gap-3 md:gap-0 z-10 relative">
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            <UserCircle size={18} className="text-amber-500" />
-            <div className="relative flex-1 md:flex-none">
-              <select 
-                value={selectedCharId} 
-                onChange={(e) => setSelectedCharId(e.target.value)}
-                className="w-full md:w-auto bg-neutral-800 border border-amber-900/30 text-amber-100 text-xs px-3 py-1.5 rounded outline-none appearance-none pr-8 cursor-pointer hover:border-amber-500/50 transition-colors"
-              >
-                <option value="" disabled>요원 선택...</option>
-                {characters.map(c => <option key={c.id} value={c.id}>{c.name} ({c.species})</option>)}
-              </select>
-              <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-amber-500 pointer-events-none" />
+        <div className="flex-1 flex flex-col min-w-0 relative overflow-hidden border-t md:border-t-0 border-amber-900/20">
+          <div className="p-4 border-b border-amber-900/20 bg-black/40 flex flex-col md:flex-row items-start md:items-center justify-between shrink-0 gap-3 md:gap-0 z-10 relative">
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <UserCircle size={18} className="text-amber-500" />
+              <div className="relative flex-1 md:flex-none">
+                <select 
+                  value={selectedCharId} 
+                  onChange={(e) => setSelectedCharId(e.target.value)}
+                  className="w-full md:w-auto bg-neutral-800 border border-amber-900/30 text-amber-100 text-xs px-3 py-1.5 rounded outline-none appearance-none pr-8 cursor-pointer hover:border-amber-500/50 transition-colors"
+                >
+                  <option value="" disabled>요원 선택...</option>
+                  {characters.map(c => <option key={c.id} value={c.id}>{c.name} ({c.species})</option>)}
+                </select>
+                <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-amber-500 pointer-events-none" />
+              </div>
+            </div>
+            <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+               <div className="text-[10px] text-neutral-500 uppercase tracking-tighter">Trust Level</div>
+               <div className="flex items-center gap-2">
+                  <div className="w-32 h-1.5 bg-neutral-800 rounded-full overflow-hidden border border-neutral-700">
+                      <div 
+                      className={`h-full transition-all duration-1000 ${currentAffinity >= 0 ? styles.bar : 'bg-red-500'}`} 
+                      style={{ width: `${Math.abs(currentAffinity)}%` }}
+                      />
+                  </div>
+                  <span className={`text-xs font-bold ${currentAffinity >= 0 ? styles.text : 'text-red-400'}`}>{currentAffinity}</span>
+               </div>
             </div>
           </div>
-          <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-             <div className="text-[10px] text-neutral-500 uppercase tracking-tighter">Trust Level</div>
-             <div className="flex items-center gap-2">
-                <div className="w-32 h-1.5 bg-neutral-800 rounded-full overflow-hidden border border-neutral-700">
-                    <div 
-                    className={`h-full transition-all duration-1000 ${currentAffinity >= 0 ? styles.bar : 'bg-red-500'}`} 
-                    style={{ width: `${Math.abs(currentAffinity)}%` }}
-                    />
-                </div>
-                <span className={`text-xs font-bold ${currentAffinity >= 0 ? styles.text : 'text-red-400'}`}>{currentAffinity}</span>
-             </div>
-          </div>
-        </div>
 
-        {/* Content View */}
-        <div className="flex-1 relative overflow-hidden">
-           {showProfile ? (
-             <div className="absolute inset-0 bg-neutral-900/98 flex flex-col animate-in fade-in zoom-in-95 duration-300 z-10">
-                {/* Profile Header */}
-                <div className="flex justify-between items-center p-4 border-b border-amber-900/30 bg-black/40 shrink-0">
-                   <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full border ${styles.border} flex items-center justify-center bg-neutral-800 text-2xl`}>
-                        {selectedNpc.avatar}
-                      </div>
-                      <div>
-                         <h3 className={`text-sm md:text-base font-serif ${styles.text} uppercase tracking-wider`}>{selectedNpc.name}</h3>
-                         <span className="text-[9px] text-neutral-500 font-mono flex items-center gap-1">
-                           <Terminal size={10} /> PERSONNEL DATA // SECURE ARCHIVE
-                         </span>
-                      </div>
-                   </div>
-                   <button onClick={() => setShowProfile(false)} className="text-neutral-500 hover:text-amber-500 transition-colors p-2"><X size={20} /></button>
-                </div>
-
-                {/* Scrollable Data Area */}
-                <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar pb-20 md:pb-8">
-                   <div className="max-w-3xl mx-auto space-y-6">
-                     <div className={`bg-${selectedNpc.themeColor}-500/5 border border-${selectedNpc.themeColor}-500/20 p-3 rounded flex items-start gap-3`}>
-                        <Info size={16} className={`${styles.text} shrink-0 mt-0.5`} />
-                        <div className="flex flex-col gap-1">
-                          <p className="text-[11px] text-neutral-300 leading-tight">
-                            본 데이터는 <span className={`${styles.text} font-bold`}>보안 등급(호감도)</span>에 따라 자동 복호화됩니다.
-                          </p>
-                          <div className="h-1 w-full bg-neutral-800 rounded-full overflow-hidden mt-1">
-                            <div className={`h-full ${styles.bg} opacity-50 transition-all duration-1000`} style={{ width: `${Math.min(100, Math.max(0, currentAffinity))}%` }} />
-                          </div>
-                        </div>
-                     </div>
-
-                     <ProfileSection title="Physical Appearance" data={selectedNpc.appearance as any} threshold={THRESHOLDS.appearance} />
-                     <ProfileSection title="Basic Profile" data={selectedNpc.profile as any} threshold={THRESHOLDS.profile} />
-                     <ProfileSection title="Background & History" data={selectedNpc.background as any} threshold={THRESHOLDS.background} />
-                     
-                     {/* New Sections */}
-                     <RelationshipSection />
-                     <DimensionSection />
-
-                     <ProfileSection title="Personality & Archetype" data={selectedNpc.personalityDetail as any} threshold={THRESHOLDS.personality} />
-                     <ProfileSection title="Operational Routine" data={selectedNpc.visibleSide as any} threshold={THRESHOLDS.visibleSide} />
-                     <ProfileSection title="Classified: Hidden Side" data={selectedNpc.hiddenSide as any} threshold={THRESHOLDS.hiddenSide} />
-                     <ProfileSection title="Preferences & Obsessions" data={selectedNpc.preference as any} threshold={THRESHOLDS.preference} />
-                     
-                     <div className={`mt-6 p-6 border transition-all duration-500 rounded-sm relative overflow-hidden ${currentAffinity >= THRESHOLDS.special ? `${styles.bgLight} ${styles.border}` : 'bg-black/40 border-white/5 opacity-60 grayscale'}`}>
-                        <h4 className={`text-xs font-bold ${styles.text} uppercase tracking-widest mb-3 flex items-center gap-2`}>
-                          {currentAffinity >= THRESHOLDS.special ? <Sparkles size={14} /> : <Lock size={14} />}
-                          Special Ability (Level 100)
-                        </h4>
-                        {currentAffinity >= THRESHOLDS.special ? (
-                          <div className="relative z-10">
-                            <p className={`text-sm text-amber-100 font-serif leading-relaxed italic border-l-2 ${styles.border.replace('/30', '')} pl-4 py-1`}>
-                              "{selectedNpc.special}"
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="flex flex-col items-center py-4">
-                             <Lock className="text-neutral-700 mb-2" size={24} />
-                             <p className="text-[10px] text-neutral-600 uppercase font-mono tracking-widest">Top Secret Clearance Required</p>
-                          </div>
-                        )}
-                        {/* Background Effect for Special */}
-                        {currentAffinity >= THRESHOLDS.special && (
-                          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay pointer-events-none" />
-                        )}
-                     </div>
-                   </div>
-                </div>
-             </div>
-           ) : (
-             <div className="flex flex-col items-center justify-center h-full p-4 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-y-auto custom-scrollbar pb-20 md:pb-8">
-                <div className="w-full max-w-xl flex flex-col items-center space-y-8">
-                  {/* NPC Hero Section */}
-                  <div className="flex flex-col items-center text-center">
-                      <div className={`relative group cursor-pointer`} onClick={() => setShowProfile(true)}>
-                        <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full border-4 ${styles.border} flex items-center justify-center text-6xl md:text-7xl bg-neutral-800 mb-4 transition-transform duration-300 ${isAnimating ? 'scale-110' : 'group-hover:scale-105'} shadow-2xl`}>
+          {/* Content View */}
+          <div className="flex-1 relative overflow-hidden">
+             {showProfile ? (
+               <div className="absolute inset-0 bg-neutral-900/98 flex flex-col animate-in fade-in zoom-in-95 duration-300 z-10">
+                  {/* Profile Header */}
+                  <div className="flex justify-between items-center p-4 border-b border-amber-900/30 bg-black/40 shrink-0">
+                     <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full border ${styles.border} flex items-center justify-center bg-neutral-800 text-2xl`}>
                           {selectedNpc.avatar}
                         </div>
-                        <div className="absolute bottom-4 right-0 bg-neutral-900 border border-neutral-700 rounded-full p-1.5 text-neutral-400 group-hover:text-amber-500 transition-colors shadow-lg">
-                          <FileText size={14} />
+                        <div>
+                           <h3 className={`text-sm md:text-base font-serif ${styles.text} uppercase tracking-wider`}>{selectedNpc.name}</h3>
+                           <span className="text-[9px] text-neutral-500 font-mono flex items-center gap-1">
+                             <Terminal size={10} /> PERSONNEL DATA // SECURE ARCHIVE
+                           </span>
                         </div>
-                      </div>
-                      
-                      <h2 className={`text-2xl md:text-3xl font-serif ${styles.text} tracking-widest uppercase mb-1`}>{selectedNpc.name}</h2>
-                      <p className="text-[11px] text-neutral-500 italic px-4 mb-4">{selectedNpc.role}</p>
-                      
-                      <button 
-                        onClick={() => setShowProfile(true)}
-                        className="flex items-center gap-2 px-4 py-1.5 text-[10px] uppercase tracking-wider border border-neutral-700 rounded-full hover:bg-neutral-800 hover:border-amber-500/50 text-neutral-400 hover:text-amber-100 transition-all"
-                      >
-                        <Terminal size={12} /> 데이터 복호화 현황 보기
-                      </button>
+                     </div>
+                     <button onClick={() => setShowProfile(false)} className="text-neutral-500 hover:text-amber-500 transition-colors p-2"><X size={20} /></button>
                   </div>
 
-                  {/* Terminal Log */}
-                  <div className="w-full">
-                      <div className="bg-black/60 border border-amber-900/30 p-4 md:p-6 rounded-lg min-h-[120px] flex flex-col justify-center relative shadow-inner">
-                        <div className="absolute -top-3 left-4 bg-neutral-900 px-2 text-[9px] text-amber-500/50 uppercase tracking-widest border border-amber-900/30">Terminal Feed</div>
-                        <div className="space-y-2 max-h-[100px] overflow-y-auto custom-scrollbar">
-                            {interactionLog.length > 0 ? (
-                              interactionLog.map((log, i) => (
-                                <div key={i} className={`text-xs md:text-sm ${i === 0 ? 'text-amber-100 font-bold' : 'text-neutral-500 opacity-60 text-[10px] md:text-xs'} transition-all`}>
-                                  {log}
+                  {/* Scrollable Data Area */}
+                  <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar pb-20 md:pb-8">
+                     <div className="max-w-3xl mx-auto space-y-6">
+                       <div className={`bg-${selectedNpc.themeColor}-500/5 border border-${selectedNpc.themeColor}-500/20 p-3 rounded flex items-start gap-3`}>
+                          <Info size={16} className={`${styles.text} shrink-0 mt-0.5`} />
+                          <div className="flex flex-col gap-1">
+                            <p className="text-[11px] text-neutral-300 leading-tight">
+                              본 데이터는 <span className={`${styles.text} font-bold`}>보안 등급(호감도)</span>에 따라 자동 복호화됩니다.
+                            </p>
+                            <div className="h-1 w-full bg-neutral-800 rounded-full overflow-hidden mt-1">
+                              <div className={`h-full ${styles.bg} opacity-50 transition-all duration-1000`} style={{ width: `${Math.min(100, Math.max(0, currentAffinity))}%` }} />
+                            </div>
+                          </div>
+                       </div>
+
+                       <ProfileSection title="Physical Appearance" data={selectedNpc.appearance as any} threshold={THRESHOLDS.appearance} />
+                       <ProfileSection title="Basic Profile" data={selectedNpc.profile as any} threshold={THRESHOLDS.profile} />
+                       <ProfileSection title="Background & History" data={selectedNpc.background as any} threshold={THRESHOLDS.background} />
+                       
+                       {/* New Sections */}
+                       <RelationshipSection />
+                       <DimensionSection />
+
+                       <ProfileSection title="Personality & Archetype" data={selectedNpc.personalityDetail as any} threshold={THRESHOLDS.personality} />
+                       <ProfileSection title="Operational Routine" data={selectedNpc.visibleSide as any} threshold={THRESHOLDS.visibleSide} />
+                       <ProfileSection title="Classified: Hidden Side" data={selectedNpc.hiddenSide as any} threshold={THRESHOLDS.hiddenSide} />
+                       <ProfileSection title="Preferences & Obsessions" data={selectedNpc.preference as any} threshold={THRESHOLDS.preference} />
+                       
+                       <div className={`mt-6 p-6 border transition-all duration-500 rounded-sm relative overflow-hidden ${currentAffinity >= THRESHOLDS.special ? `${styles.bgLight} ${styles.border}` : 'bg-black/40 border-white/5 opacity-60 grayscale'}`}>
+                          <h4 className={`text-xs font-bold ${styles.text} uppercase tracking-widest mb-3 flex items-center gap-2`}>
+                            {currentAffinity >= THRESHOLDS.special ? <Sparkles size={14} /> : <Lock size={14} />}
+                            Special Ability (Level 100)
+                          </h4>
+                          {currentAffinity >= THRESHOLDS.special ? (
+                            <div className="relative z-10">
+                              <p className={`text-sm text-amber-100 font-serif leading-relaxed italic border-l-2 ${styles.border.replace('/30', '')} pl-4 py-1`}>
+                                "{selectedNpc.special}"
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center py-4">
+                               <Lock className="text-neutral-700 mb-2" size={24} />
+                               <p className="text-[10px] text-neutral-600 uppercase font-mono tracking-widest">Top Secret Clearance Required</p>
+                            </div>
+                          )}
+                          {/* Background Effect for Special */}
+                          {currentAffinity >= THRESHOLDS.special && (
+                            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay pointer-events-none" />
+                          )}
+                       </div>
+                     </div>
+                  </div>
+               </div>
+             ) : (
+               <div className="flex flex-col items-center justify-center h-full p-4 md:p-8 animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-y-auto custom-scrollbar pb-20 md:pb-8">
+                  <div className="w-full max-w-xl flex flex-col items-center space-y-8">
+                    {/* NPC Hero Section */}
+                    <div className="flex flex-col items-center text-center">
+                        <div className={`relative group cursor-pointer`} onClick={() => setShowProfile(true)}>
+                          <div className={`w-32 h-32 md:w-40 md:h-40 rounded-full border-4 ${styles.border} flex items-center justify-center text-6xl md:text-7xl bg-neutral-800 mb-4 transition-transform duration-300 ${isAnimating ? 'scale-110' : 'group-hover:scale-105'} shadow-2xl`}>
+                            {selectedNpc.avatar}
+                          </div>
+                          <div className="absolute bottom-4 right-0 bg-neutral-900 border border-neutral-700 rounded-full p-1.5 text-neutral-400 group-hover:text-amber-500 transition-colors shadow-lg">
+                            <FileText size={14} />
+                          </div>
+                        </div>
+                        
+                        <h2 className={`text-2xl md:text-3xl font-serif ${styles.text} tracking-widest uppercase mb-1`}>{selectedNpc.name}</h2>
+                        <p className="text-[11px] text-neutral-500 italic px-4 mb-4">{selectedNpc.role}</p>
+                        
+                        <button 
+                          onClick={() => setShowProfile(true)}
+                          className="flex items-center gap-2 px-4 py-1.5 text-[10px] uppercase tracking-wider border border-neutral-700 rounded-full hover:bg-neutral-800 hover:border-amber-500/50 text-neutral-400 hover:text-amber-100 transition-all"
+                        >
+                          <Terminal size={12} /> 데이터 복호화 현황 보기
+                        </button>
+                    </div>
+
+                    {/* Terminal Log */}
+                    <div className="w-full">
+                        <div className="bg-black/60 border border-amber-900/30 p-4 md:p-6 rounded-lg min-h-[120px] flex flex-col justify-center relative shadow-inner">
+                          <div className="absolute -top-3 left-4 bg-neutral-900 px-2 text-[9px] text-amber-500/50 uppercase tracking-widest border border-amber-900/30">Terminal Feed</div>
+                          <div className="space-y-2 max-h-[100px] overflow-y-auto custom-scrollbar">
+                              {interactionLog.length > 0 ? (
+                                interactionLog.map((log, i) => (
+                                  <div key={i} className={`text-xs md:text-sm ${i === 0 ? 'text-amber-100 font-bold' : 'text-neutral-500 opacity-60 text-[10px] md:text-xs'} transition-all`}>
+                                    {log}
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="text-neutral-600 italic text-center text-xs md:text-sm py-4">
+                                  요원을 선택하고 상호작용을 시작하십시오.
                                 </div>
-                              ))
-                            ) : (
-                              <div className="text-neutral-600 italic text-center text-xs md:text-sm py-4">
-                                요원을 선택하고 상호작용을 시작하십시오.
-                              </div>
-                            )}
+                              )}
+                          </div>
                         </div>
-                      </div>
-                  </div>
+                    </div>
 
-                  {/* Actions */}
-                  <div className="grid grid-cols-3 gap-3 md:gap-4 w-full">
-                      <button 
-                        onClick={() => handleAction('talk')}
-                        className="flex flex-col items-center gap-2 p-4 bg-neutral-800/40 border border-neutral-700 hover:border-amber-500/50 hover:bg-neutral-800 transition-all rounded-lg group"
-                      >
-                        <MessageSquare className="text-amber-500 group-hover:scale-110 transition-transform w-6 h-6" />
-                        <span className="text-[10px] uppercase font-bold text-neutral-400 group-hover:text-amber-500">대화 시도</span>
-                      </button>
-                      <button 
-                        onClick={() => handleAction('report')}
-                        className="flex flex-col items-center gap-2 p-4 bg-neutral-800/40 border border-neutral-700 hover:border-emerald-500/50 hover:bg-neutral-800 transition-all rounded-lg group"
-                      >
-                        <ClipboardCheck className="text-emerald-500 group-hover:scale-110 transition-transform w-6 h-6" />
-                        <span className="text-[10px] uppercase font-bold text-neutral-400 group-hover:text-emerald-500">보고서 제출</span>
-                      </button>
-                      <button 
-                        onClick={() => handleAction('gift')}
-                        className="flex flex-col items-center gap-2 p-4 bg-neutral-800/40 border border-neutral-700 hover:border-rose-500/50 hover:bg-neutral-800 transition-all rounded-lg group relative"
-                      >
-                        {giftCount > 0 && (
-                          <div className="absolute top-2 right-2 bg-rose-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-black shadow-lg">x{giftCount}</div>
-                        )}
-                        <Gift className="text-rose-500 group-hover:scale-110 transition-transform w-6 h-6" />
-                        <span className="text-[10px] uppercase font-bold text-neutral-400 group-hover:text-rose-500">선물하기</span>
-                      </button>
+                    {/* Actions */}
+                    <div className="grid grid-cols-3 gap-3 md:gap-4 w-full">
+                        <button 
+                          onClick={() => handleAction('talk')}
+                          className="flex flex-col items-center gap-2 p-4 bg-neutral-800/40 border border-neutral-700 hover:border-amber-500/50 hover:bg-neutral-800 transition-all rounded-lg group"
+                        >
+                          <MessageSquare className="text-amber-500 group-hover:scale-110 transition-transform w-6 h-6" />
+                          <span className="text-[10px] uppercase font-bold text-neutral-400 group-hover:text-amber-500">대화 시도</span>
+                        </button>
+                        <button 
+                          onClick={() => handleAction('report')}
+                          className="flex flex-col items-center gap-2 p-4 bg-neutral-800/40 border border-neutral-700 hover:border-emerald-500/50 hover:bg-neutral-800 transition-all rounded-lg group"
+                        >
+                          <ClipboardCheck className="text-emerald-500 group-hover:scale-110 transition-transform w-6 h-6" />
+                          <span className="text-[10px] uppercase font-bold text-neutral-400 group-hover:text-emerald-500">보고서 제출</span>
+                        </button>
+                        <button 
+                          onClick={() => handleAction('gift')}
+                          className="flex flex-col items-center gap-2 p-4 bg-neutral-800/40 border border-neutral-700 hover:border-rose-500/50 hover:bg-neutral-800 transition-all rounded-lg group relative"
+                        >
+                          {giftCount > 0 && (
+                            <div className="absolute top-2 right-2 bg-rose-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-black shadow-lg">x{giftCount}</div>
+                          )}
+                          <Gift className="text-rose-500 group-hover:scale-110 transition-transform w-6 h-6" />
+                          <span className="text-[10px] uppercase font-bold text-neutral-400 group-hover:text-rose-500">선물하기</span>
+                        </button>
+                    </div>
                   </div>
-                </div>
-             </div>
-           )}
-        </div>
+               </div>
+             )}
+          </div>
 
-        {/* Footer Status */}
-        <div className="absolute bottom-4 right-4 text-[8px] md:text-[9px] text-neutral-700 uppercase tracking-tighter pointer-events-none hidden md:block z-0">
-          SECURE CONNECTION ESTABLISHED // ID: {selectedCharId.slice(0, 8)}
+          {/* Footer Status */}
+          <div className="absolute bottom-4 right-4 text-[8px] md:text-[9px] text-neutral-700 uppercase tracking-tighter pointer-events-none hidden md:block z-0">
+            SECURE CONNECTION ESTABLISHED // ID: {selectedCharId.slice(0, 8)}
+          </div>
         </div>
       </div>
     </div>

@@ -133,6 +133,9 @@ class DatabaseManager {
   // --- Store & Items Actions ---
 
   applyStoreItem(char: Character, item: StoreItem, targetPartKey?: keyof Body): Character {
+    // 사망한 캐릭터는 어떤 아이템도 효과를 볼 수 없음 (중복 방어)
+    if (char.status === '사망') return char;
+
     const updated = { ...char, body: { ...char.body } };
     
     switch (item.effect) {
@@ -154,14 +157,7 @@ class DatabaseManager {
         } else {
              this.repairSingleCriticalPart(updated);
         }
-
-        if (updated.status === '사망') {
-          if (updated.body.head.current > 0 && updated.body.neck.current > 0 && updated.body.torso.current > 0) {
-              updated.status = '생존';
-              updated.mentalState = '혼란';
-              updated.sanity = Math.max(10, Math.floor(updated.maxSanity * 0.1));
-          }
-        }
+        // 사망 상태에서 부위가 복구되어도 부활하는 로직을 제거함
         break;
     }
     return updated;

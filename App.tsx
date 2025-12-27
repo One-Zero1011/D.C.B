@@ -51,6 +51,9 @@ const App: React.FC = () => {
   const [unlockedLoreTitles, setUnlockedLoreTitles] = useState<string[]>([]);
   const [notifiedLoreThresholds, setNotifiedLoreThresholds] = useState<Set<number>>(new Set());
 
+  // 이미 재생된 글리치 이펙트 ID 관리 (화면 이동 시 재실행 방지)
+  const [handledGlitchIds, setHandledGlitchIds] = useState<Set<string>>(new Set());
+
   // 커스텀 미션 상태
   const [customMissions, setCustomMissions] = useState<Mission[]>([]);
 
@@ -59,6 +62,11 @@ const App: React.FC = () => {
   
   const totalScore = getStabilizationScore(characters, logs, manualSyncBonus);
   const isAscended = getSyncRate(characters, logs, manualSyncBonus) >= 100;
+
+  // 화면(View) 변경 시 이펙트 상태 초기화 (이펙트 도중 이동 시 시뮬레이션 멈춤 방지)
+  useEffect(() => {
+    setIsEffectActive(false);
+  }, [view]);
 
   useEffect(() => {
     const newUnlocks: string[] = [];
@@ -82,6 +90,14 @@ const App: React.FC = () => {
   // 알림창 제거 함수 메모이제이션 (이 함수가 새로 생성되지 않아야 자식의 useEffect가 재발생하지 않음)
   const handleCloseNotification = useCallback(() => {
     setUnlockedLoreTitles(prev => prev.slice(1));
+  }, []);
+
+  const handleGlitchProcessed = useCallback((id: string) => {
+    setHandledGlitchIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
   }, []);
 
   const simFileInputRef = useRef<HTMLInputElement>(null);
@@ -116,6 +132,15 @@ const App: React.FC = () => {
           setLogs(parsed.logs || []);
           setManualSyncBonus(parsed.manualSyncBonus || 0);
           
+          // 저장된 로그에서 이미 발생한 글리치 ID 복원 (재생 방지)
+          const restoredGlitchIds = new Set<string>();
+          (parsed.logs || []).forEach((log: LogEntry) => {
+            if (log.type === 'glitch') {
+              restoredGlitchIds.add(log.id);
+            }
+          });
+          setHandledGlitchIds(restoredGlitchIds);
+
           const restoredSet = new Set<number>();
           const currentScore = getStabilizationScore(parsed.characters, parsed.logs || [], parsed.manualSyncBonus || 0);
           DIMENSION_LORE.forEach(lore => {
@@ -302,6 +327,7 @@ const App: React.FC = () => {
     setManualSyncBonus(0);
     setNotifiedLoreThresholds(new Set());
     setUnlockedLoreTitles([]);
+    setHandledGlitchIds(new Set()); // 글리치 처리 기록 초기화
     setCustomMissions([]); // 상태 초기화
     db.resetMissions(); // DB 초기화
     setCurrentDate(getInitialSimulationDate());
@@ -402,6 +428,13 @@ const App: React.FC = () => {
           setManualSyncBonus(parsed.manualSyncBonus || 0);
           setIsAscensionDismissed(false);
           
+          // 글리치 처리 기록 복원
+          const restoredGlitchIds = new Set<string>();
+          (parsed.logs || []).forEach((log: LogEntry) => {
+            if (log.type === 'glitch') restoredGlitchIds.add(log.id);
+          });
+          setHandledGlitchIds(restoredGlitchIds);
+
           // 커스텀 미션 로드
           if (parsed.customMissions && Array.isArray(parsed.customMissions)) {
             setCustomMissions(parsed.customMissions);
@@ -615,7 +648,12 @@ const App: React.FC = () => {
               </div>
               {/* Mobile: Log height reduced to 25vh for better visibility of characters. Desktop: Full height */}
               <div className="h-[25vh] md:h-[35vh] lg:h-full lg:col-span-4 shrink-0 min-h-0 overflow-hidden">
-                <LogViewer logs={logs} onEffectStateChange={setIsEffectActive} />
+                <LogViewer 
+                  logs={logs} 
+                  onEffectStateChange={setIsEffectActive} 
+                  handledGlitchIds={handledGlitchIds} 
+                  onGlitchProcessed={handleGlitchProcessed} 
+                />
               </div>
             </div>
           ) : view === 'office' ? (

@@ -14,6 +14,8 @@ import { DefaultError } from '../dataBase/visualEffect/DefaultError';
 interface Props {
   logs: LogEntry[];
   onEffectStateChange?: (active: boolean) => void;
+  handledGlitchIds?: Set<string>;
+  onGlitchProcessed?: (id: string) => void;
 }
 
 const VisualEffectOverlay: React.FC<{ log: LogEntry; onComplete: () => void }> = ({ log, onComplete }) => {
@@ -94,21 +96,29 @@ const VisualEffectOverlay: React.FC<{ log: LogEntry; onComplete: () => void }> =
   }
 };
 
-const LogViewer: React.FC<Props> = ({ logs, onEffectStateChange }) => {
+const LogViewer: React.FC<Props> = ({ logs, onEffectStateChange, handledGlitchIds, onGlitchProcessed }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [activeEffectLog, setActiveEffectLog] = useState<LogEntry | null>(null);
-  const lastTriggeredIdRef = useRef<string | null>(null);
+
+  // 컴포넌트 언마운트 시 cleanup 처리
+  useEffect(() => {
+    return () => {
+      onEffectStateChange?.(false);
+    };
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     const latestGlitch = [...logs].reverse().find(log => log.type === 'glitch');
 
-    if (latestGlitch && lastTriggeredIdRef.current !== latestGlitch.id) {
+    // 변경점: 내부 ref 대신 부모로부터 전달받은 handledGlitchIds를 사용하여 중복 실행 방지
+    // handledGlitchIds가 없으면(하위 호환) 기존 방식대로 동작하지 않고 이펙트를 실행하지 않음 (안전 장치)
+    if (latestGlitch && handledGlitchIds && !handledGlitchIds.has(latestGlitch.id)) {
       setActiveEffectLog(latestGlitch);
-      lastTriggeredIdRef.current = latestGlitch.id;
+      onGlitchProcessed?.(latestGlitch.id);
       onEffectStateChange?.(true);
     }
-  }, [logs, onEffectStateChange]);
+  }, [logs, onEffectStateChange, handledGlitchIds, onGlitchProcessed]);
 
   const handleEffectComplete = () => {
     setActiveEffectLog(null);
